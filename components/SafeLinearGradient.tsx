@@ -1,71 +1,32 @@
 import React from 'react';
-import { View, ViewStyle } from 'react-native';
-
-// Wrapper seguro para LinearGradient que maneja errores de importación
-let LinearGradient: any = null;
-let isLoaded = false;
-
-function loadLinearGradient() {
-  if (isLoaded) return;
-  
-  try {
-    const linearGradientModule = require('expo-linear-gradient');
-    if (linearGradientModule) {
-      // Intentar diferentes formas de obtener LinearGradient de forma segura
-      if (linearGradientModule.LinearGradient) {
-        LinearGradient = linearGradientModule.LinearGradient;
-      } else if (linearGradientModule.default) {
-        if (linearGradientModule.default.LinearGradient) {
-          LinearGradient = linearGradientModule.default.LinearGradient;
-        } else if (typeof linearGradientModule.default === 'function') {
-          LinearGradient = linearGradientModule.default;
-        }
-      } else if (typeof linearGradientModule === 'function') {
-        LinearGradient = linearGradientModule;
-      }
-    }
-    isLoaded = true;
-  } catch (e) {
-    console.warn('expo-linear-gradient no está disponible, usando View como fallback:', e);
-    isLoaded = true;
-  }
-}
-
-// Cargar al importar el módulo
-loadLinearGradient();
+import { View, StyleSheet, ViewStyle, ColorValue } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface SafeLinearGradientProps {
-  colors: string[];
+  colors: readonly ColorValue[] | ColorValue[];
   style?: ViewStyle;
-  start?: { x: number; y: number };
-  end?: { x: number; y: number };
   children?: React.ReactNode;
+  [key: string]: any;
 }
 
-export function SafeLinearGradient({ colors, style, start, end, children }: SafeLinearGradientProps) {
-  // Intentar cargar de nuevo si no se cargó antes
-  if (!isLoaded) {
-    loadLinearGradient();
+export function SafeLinearGradient({ colors, style, children, ...props }: SafeLinearGradientProps) {
+  try {
+    return (
+      <LinearGradient
+        colors={colors as readonly [ColorValue, ColorValue, ...ColorValue[]]}
+        style={style}
+        {...props}
+      >
+        {children}
+      </LinearGradient>
+    );
+  } catch (error) {
+    // Fallback a View si hay algún error con LinearGradient
+    console.warn('Error rendering LinearGradient, using View fallback:', error);
+    return (
+      <View style={[style, { backgroundColor: (colors[0] as string) || '#ffffff' }]}>
+        {children}
+      </View>
+    );
   }
-  
-  if (LinearGradient && typeof LinearGradient === 'function') {
-    try {
-      return (
-        <LinearGradient colors={colors} style={style} start={start} end={end}>
-          {children}
-        </LinearGradient>
-      );
-    } catch (e) {
-      console.warn('Error al renderizar LinearGradient:', e);
-    }
-  }
-  
-  // Fallback a View si LinearGradient no está disponible
-  return (
-    <View style={[{ backgroundColor: colors[0] || '#ffffff' }, style]}>
-      {children}
-    </View>
-  );
 }
-
-

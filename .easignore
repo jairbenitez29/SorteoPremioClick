@@ -1,0 +1,46 @@
+# Carpetas que no son necesarias para el build de la app móvil
+/imagenes/
+/backend/
+/web/
+/node_modules/
+/.expo/
+/.expo-shared/
+/dist/
+/web-build/
+
+# Archivos de documentación (no necesarios para el build)
+*.md
+!README.md
+
+# Archivos SQL (no necesarios para el build)
+*.sql
+
+# Archivos temporales
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Archivos de entorno (ya se configuran en EAS)
+.env
+.env.local
+.env.*.local
+
+# Archivos de credenciales
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Archivos de Git
+.git/
+.gitignore
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

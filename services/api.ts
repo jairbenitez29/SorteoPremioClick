@@ -6,11 +6,11 @@ import { Platform } from 'react-native';
 // En desarrollo: usa tu IP local (solo si el backend está corriendo localmente)
 // En producción: usa la URL de tu servidor
 const LOCAL_IP = '192.168.1.48'; // IP local para desarrollo
-const PRODUCTION_API_URL = 'https://sorteos-app-orcin.vercel.app/api'; // URL de producción en Vercel
+const PRODUCTION_API_URL = 'https://premioclick.cl/api'; // URL de producción en cPanel
 
 // Variable para forzar uso de producción (útil cuando el backend está desplegado)
 // Cambia a false solo si quieres usar el backend local
-const FORCE_PRODUCTION = true;
+const FORCE_PRODUCTION = true; // Usar backend de producción (cPanel)
 
 // Para emulador Android usa 10.0.2.2, para dispositivo físico usa tu IP
 const getApiUrl = () => {
