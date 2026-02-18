@@ -1,0 +1,347 @@
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
+import { Card, Text, Button, ActivityIndicator, FAB, IconButton, Chip } from 'react-native-paper';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { api } from '../../services/api';
+import { format } from 'date-fns';
+import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+import { useCallback } from 'react';
+
+export default function AdminSorteos() {
+  const router = useRouter();
+  const [sorteos, setSorteos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadSorteos();
+  }, []);
+
+  // Recargar sorteos cuando la pantalla recibe foco (al volver de crear/editar)
+  useFocusEffect(
+    useCallback(() => {
+      loadSorteos();
+    }, [])
+  );
+
+  const loadSorteos = async () => {
+    try {
+      const response = await api.get('/sorteos');
+      setSorteos(response.data);
+    } catch (error) {
+      console.error('Error al cargar sorteos:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadSorteos();
+  };
+
+  const handleDelete = async (id: number, titulo: string) => {
+    Alert.alert(
+      'Eliminar Sorteo',
+      `¿Estás seguro de eliminar el sorteo "${titulo}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/sorteos/${id}`);
+              loadSorteos();
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar el sorteo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRealizarSorteo = async (sorteoId: number) => {
+    Alert.alert(
+      'Realizar Sorteo',
+      '¿Estás seguro de realizar este sorteo? Esta acción seleccionará los ganadores.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Realizar',
+          onPress: async () => {
+            try {
+              await api.post(`/tombola/realizar/${sorteoId}`);
+              Alert.alert('Éxito', 'Sorteo realizado correctamente');
+              loadSorteos();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.error || 'No se pudo realizar el sorteo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#7b2cbf" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <SafeLinearGradient
+        colors={['#ffffff', '#f3e8ff', '#e9d5ff']}
+        style={styles.header}
+      >
+        <Text variant="headlineMedium" style={styles.headerText}>
+          Gestión de Sorteos
+        </Text>
+      </SafeLinearGradient>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {sorteos.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Card.Content>
+              <Text variant="titleMedium" style={styles.emptyText}>
+                No hay sorteos
+              </Text>
+            </Card.Content>
+          </Card>
+        ) : (
+          sorteos.map((sorteo) => (
+            <Card key={sorteo.id} style={styles.card} mode="elevated">
+              <SafeLinearGradient
+                colors={sorteo.estado === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardGradient}
+              >
+                <Card.Content style={styles.cardContent}>
+                  <View style={styles.cardHeader}>
+                    <Text variant="titleLarge" style={styles.cardTitle}>
+                      {sorteo.titulo}
+                    </Text>
+                    <Chip
+                      style={[
+                        styles.statusChip,
+                        sorteo.estado === 'activo' && styles.statusChipActive,
+                      ]}
+                      textStyle={styles.statusChipText}
+                    >
+                      {sorteo.estado === 'activo' ? '✨ Activo' : '✅ Finalizado'}
+                    </Chip>
+                  </View>
+                  <Text variant="bodyMedium" style={styles.cardDescription}>
+                    {sorteo.descripcion || 'Sin descripción'}
+                  </Text>
+                  <View style={styles.cardInfoRow}>
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoIcon}>📅</Text>
+                      <Text style={styles.infoText}>
+                        {format(new Date(sorteo.fecha_sorteo), "dd MMM yyyy")}
+                      </Text>
+                    </View>
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoIcon}>🕐</Text>
+                      <Text style={styles.infoText}>
+                        {format(new Date(sorteo.fecha_sorteo), "HH:mm")}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardStats}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statIcon}>🎫</Text>
+                      <Text style={styles.statText}>{sorteo.tickets_vendidos || 0} vendidos</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statIcon}>🎁</Text>
+                      <Text style={styles.statText}>{sorteo.total_productos || 0} premios</Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </SafeLinearGradient>
+              <Card.Actions style={styles.cardActions}>
+                <Button
+                  mode="contained"
+                  buttonColor="#7b2cbf"
+                  textColor="#fff"
+                  onPress={() => router.push(`/admin/editar-sorteo/${sorteo.id}`)}
+                  style={styles.actionButton}
+                >
+                  Editar
+                </Button>
+                {sorteo.estado === 'activo' && (
+                  <Button
+                    mode="contained"
+                    buttonColor="#212121"
+                    textColor="#fff"
+                    onPress={() => handleRealizarSorteo(sorteo.id)}
+                    style={styles.actionButton}
+                  >
+                    Realizar
+                  </Button>
+                )}
+                <IconButton
+                  icon="delete"
+                  iconColor="#f44336"
+                  size={24}
+                  onPress={() => handleDelete(sorteo.id, sorteo.titulo)}
+                />
+              </Card.Actions>
+            </Card>
+          ))
+        )}
+      </ScrollView>
+
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={() => router.push('/admin/crear-sorteo')}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    padding: 24,
+    paddingTop: 60,
+    paddingBottom: 32,
+  },
+  headerText: {
+    color: '#212121',
+    fontWeight: 'bold',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+  card: {
+    marginBottom: 16,
+    elevation: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  cardGradient: {
+    borderRadius: 16,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontWeight: 'bold',
+    flex: 1,
+    color: '#212121',
+    fontSize: 20,
+  },
+  statusChip: {
+    backgroundColor: '#e0e0e0',
+  },
+  statusChipActive: {
+    backgroundColor: '#7b2cbf',
+  },
+  statusChipText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  cardDescription: {
+    color: '#424242',
+    marginBottom: 12,
+    fontSize: 14,
+  },
+  cardInfoRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  infoIcon: {
+    fontSize: 16,
+  },
+  infoText: {
+    color: '#212121',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  cardStats: {
+    flexDirection: 'row',
+    gap: 20,
+    marginTop: 8,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(3, 169, 244, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(3, 169, 244, 0.2)',
+  },
+  statIcon: {
+    fontSize: 16,
+  },
+  statText: {
+    color: '#212121',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cardActions: {
+    padding: 8,
+    backgroundColor: '#fff',
+  },
+  actionButton: {
+    marginHorizontal: 4,
+  },
+  emptyCard: {
+    marginTop: 32,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#7b2cbf',
+  },
+});
+

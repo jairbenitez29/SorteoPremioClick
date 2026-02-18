@@ -1,0 +1,605 @@
+import { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Card, Text, Button, TextInput, Modal, Portal } from 'react-native-paper';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
+import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+
+export default function ProfileScreen() {
+  const { user, logout, updateUser } = useAuth();
+  const router = useRouter();
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNombreModal, setShowNombreModal] = useState(false);
+  
+  // Estados para editar email
+  const [nuevoEmail, setNuevoEmail] = useState(user?.email || '');
+  const [loadingEmail, setLoadingEmail] = useState(false);
+  
+  // Estados para cambiar contraseña
+  const [passwordActual, setPasswordActual] = useState('');
+  const [nuevaPassword, setNuevaPassword] = useState('');
+  const [confirmarPassword, setConfirmarPassword] = useState('');
+  const [loadingPassword, setLoadingPassword] = useState(false);
+  
+  // Estados para editar nombre
+  const [nuevoNombre, setNuevoNombre] = useState(user?.nombre || '');
+  const [loadingNombre, setLoadingNombre] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setNuevoEmail(user.email || '');
+      setNuevoNombre(user.nombre || '');
+    }
+  }, [user]);
+
+  const handleUpdateEmail = async () => {
+    if (!nuevoEmail) {
+      Alert.alert('Error', 'El email es obligatorio');
+      return;
+    }
+
+    setLoadingEmail(true);
+    try {
+      const response = await api.put('/auth/profile', {
+        nombre: user?.nombre,
+        email: nuevoEmail,
+        telefono: null,
+      });
+      Alert.alert('Éxito', 'Email actualizado correctamente');
+      if (response.data.user) {
+        updateUser(response.data.user);
+      }
+      setShowEmailModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el email');
+    } finally {
+      setLoadingEmail(false);
+    }
+  };
+
+  const handleUpdateNombre = async () => {
+    if (!nuevoNombre) {
+      Alert.alert('Error', 'El nombre es obligatorio');
+      return;
+    }
+
+    setLoadingNombre(true);
+    try {
+      const response = await api.put('/auth/profile', {
+        nombre: nuevoNombre,
+        email: user?.email,
+        telefono: null,
+      });
+      Alert.alert('Éxito', 'Nombre actualizado correctamente');
+      if (response.data.user) {
+        updateUser(response.data.user);
+      }
+      setShowNombreModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el nombre');
+    } finally {
+      setLoadingNombre(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordActual || !nuevaPassword || !confirmarPassword) {
+      Alert.alert('Error', 'Completa todos los campos');
+      return;
+    }
+
+    if (nuevaPassword.length < 6) {
+      Alert.alert('Error', 'La nueva contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (nuevaPassword !== confirmarPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    setLoadingPassword(true);
+    try {
+      await api.put('/auth/change-password', {
+        password_actual: passwordActual,
+        nueva_password: nuevaPassword,
+      });
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+      setPasswordActual('');
+      setNuevaPassword('');
+      setConfirmarPassword('');
+      setShowPasswordModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo cambiar la contraseña');
+    } finally {
+      setLoadingPassword(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
+  };
+
+  const getWebUrl = () => {
+    // Obtener la URL base del API y construir la URL de la página web
+    const apiBaseUrl = (api && api.defaults && api.defaults.baseURL) || 'https://sorteos-app-orcin.vercel.app/api';
+    // Remover /api del final si existe
+    let webUrl = apiBaseUrl.replace(/\/api$/, '');
+    
+    // Si no tiene protocolo, agregar http://
+    if (!webUrl.startsWith('http://') && !webUrl.startsWith('https://')) {
+      webUrl = `http://${webUrl}`;
+    }
+    
+    // Si termina con :3001, remover el puerto para producción
+    if (webUrl.includes(':3001')) {
+      webUrl = webUrl.replace(':3001', '');
+    }
+    
+    // En producción, usar siempre la URL de Vercel
+    if (!__DEV__) {
+      webUrl = 'https://sorteos-app-orcin.vercel.app';
+    }
+    
+    console.log('🌐 URL de la página web:', webUrl);
+    return webUrl;
+  };
+
+  const handleOpenWebPage = async () => {
+    try {
+      const webUrl = getWebUrl();
+      console.log('🔗 Abriendo página web:', webUrl);
+      await WebBrowser.openBrowserAsync(webUrl);
+    } catch (error: any) {
+      console.error('❌ Error al abrir página web:', error);
+      Alert.alert('Error', `No se pudo abrir la página web: ${error.message || 'Error desconocido'}`);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <SafeLinearGradient
+        colors={['#ffffff', '#f3e8ff', '#e9d5ff']}
+        style={styles.header}
+      >
+      </SafeLinearGradient>
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <Card style={styles.card}>
+          <Card.Content>
+            <View style={styles.profileSection}>
+              <View style={styles.avatar}>
+                <Text variant="headlineMedium" style={styles.avatarText}>
+                  {user?.nombre?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+              <Text variant="titleLarge" style={styles.name}>
+                {user?.nombre || 'Usuario'}
+              </Text>
+              <Text variant="bodyMedium" style={styles.email}>
+                {user?.email || ''}
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+
+        <Card 
+          style={styles.actionCard}
+          onPress={() => {
+            if (!user) {
+              Alert.alert(
+                'Registro Requerido',
+                'Para editar tu perfil necesitas estar registrado. ¿Deseas registrarte ahora?',
+                [
+                  {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Registrarme',
+                    onPress: () => router.push('/(auth)/register'),
+                  },
+                  {
+                    text: 'Ya tengo cuenta',
+                    onPress: () => router.push('/(auth)/login'),
+                  },
+                ]
+              );
+            } else {
+              setShowNombreModal(true);
+            }
+          }}
+        >
+          <Card.Content style={styles.actionCardContent}>
+            <MaterialCommunityIcons name="account-edit" size={24} color="#7b2cbf" />
+            <View style={styles.actionCardText}>
+              <Text variant="titleMedium" style={styles.actionCardTitle}>
+                Editar Nombre
+              </Text>
+              <Text variant="bodySmall" style={styles.actionCardSubtitle}>
+                {user?.nombre || 'Sin nombre'}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+          </Card.Content>
+        </Card>
+
+        <Card 
+          style={styles.actionCard}
+          onPress={() => {
+            if (!user) {
+              Alert.alert(
+                'Registro Requerido',
+                'Para editar tu perfil necesitas estar registrado. ¿Deseas registrarte ahora?',
+                [
+                  {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Registrarme',
+                    onPress: () => router.push('/(auth)/register'),
+                  },
+                  {
+                    text: 'Ya tengo cuenta',
+                    onPress: () => router.push('/(auth)/login'),
+                  },
+                ]
+              );
+            } else {
+              setShowEmailModal(true);
+            }
+          }}
+        >
+          <Card.Content style={styles.actionCardContent}>
+            <MaterialCommunityIcons name="email-edit" size={24} color="#7b2cbf" />
+            <View style={styles.actionCardText}>
+              <Text variant="titleMedium" style={styles.actionCardTitle}>
+                Cambiar Email
+              </Text>
+              <Text variant="bodySmall" style={styles.actionCardSubtitle}>
+                {user?.email || 'Sin email'}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+          </Card.Content>
+        </Card>
+
+        <Card 
+          style={styles.actionCard}
+          onPress={() => {
+            if (!user) {
+              Alert.alert(
+                'Registro Requerido',
+                'Para cambiar tu contraseña necesitas estar registrado. ¿Deseas registrarte ahora?',
+                [
+                  {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Registrarme',
+                    onPress: () => router.push('/(auth)/register'),
+                  },
+                  {
+                    text: 'Ya tengo cuenta',
+                    onPress: () => router.push('/(auth)/login'),
+                  },
+                ]
+              );
+            } else {
+              setShowPasswordModal(true);
+            }
+          }}
+        >
+          <Card.Content style={styles.actionCardContent}>
+            <MaterialCommunityIcons name="lock-reset" size={24} color="#7b2cbf" />
+            <View style={styles.actionCardText}>
+              <Text variant="titleMedium" style={styles.actionCardTitle}>
+                Cambiar Contraseña
+              </Text>
+              <Text variant="bodySmall" style={styles.actionCardSubtitle}>
+                Actualizar tu contraseña de acceso
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+          </Card.Content>
+        </Card>
+
+        <Card 
+          style={styles.actionCard}
+          onPress={handleOpenWebPage}
+        >
+          <Card.Content style={styles.actionCardContent}>
+            <MaterialCommunityIcons name="web" size={24} color="#7b2cbf" />
+            <View style={styles.actionCardText}>
+              <Text variant="titleMedium" style={styles.actionCardTitle}>
+                Premiaciones en Línea
+              </Text>
+              <Text variant="bodySmall" style={styles.actionCardSubtitle}>
+                Las premiaciones se realizan en nuestra página web
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+          </Card.Content>
+        </Card>
+
+        <Button
+          mode="contained"
+          onPress={handleLogout}
+          style={styles.logoutButton}
+          buttonColor="#d32f2f"
+          contentStyle={styles.logoutButtonContent}
+        >
+          Cerrar Sesión
+        </Button>
+      </ScrollView>
+
+      {/* Modal para editar nombre */}
+      <Portal>
+        <Modal
+          visible={showNombreModal}
+          onDismiss={() => setShowNombreModal(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              Editar Nombre
+            </Text>
+            <TextInput
+              label="Nombre *"
+              value={nuevoNombre}
+              onChangeText={setNuevoNombre}
+              mode="outlined"
+              style={styles.modalInput}
+              textColor="#000"
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => setShowNombreModal(false)}
+                style={styles.modalButton}
+              >
+                Cancelar
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleUpdateNombre}
+                loading={loadingNombre}
+                disabled={loadingNombre}
+                style={styles.modalButton}
+              >
+                Guardar
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Modal para editar email */}
+      <Portal>
+        <Modal
+          visible={showEmailModal}
+          onDismiss={() => setShowEmailModal(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              Cambiar Email
+            </Text>
+            <TextInput
+              label="Nuevo Email *"
+              value={nuevoEmail}
+              onChangeText={setNuevoEmail}
+              mode="outlined"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.modalInput}
+              textColor="#000"
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => setShowEmailModal(false)}
+                style={styles.modalButton}
+              >
+                Cancelar
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleUpdateEmail}
+                loading={loadingEmail}
+                disabled={loadingEmail}
+                style={styles.modalButton}
+              >
+                Guardar
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Modal para cambiar contraseña */}
+      <Portal>
+        <Modal
+          visible={showPasswordModal}
+          onDismiss={() => setShowPasswordModal(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              Cambiar Contraseña
+            </Text>
+            <TextInput
+              label="Contraseña Actual *"
+              value={passwordActual}
+              onChangeText={setPasswordActual}
+              mode="outlined"
+              secureTextEntry
+              style={styles.modalInput}
+              textColor="#000"
+            />
+            <TextInput
+              label="Nueva Contraseña *"
+              value={nuevaPassword}
+              onChangeText={setNuevaPassword}
+              mode="outlined"
+              secureTextEntry
+              style={styles.modalInput}
+              textColor="#000"
+            />
+            <TextInput
+              label="Confirmar Nueva Contraseña *"
+              value={confirmarPassword}
+              onChangeText={setConfirmarPassword}
+              mode="outlined"
+              secureTextEntry
+              style={styles.modalInput}
+              textColor="#000"
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setShowPasswordModal(false);
+                  setPasswordActual('');
+                  setNuevaPassword('');
+                  setConfirmarPassword('');
+                }}
+                style={styles.modalButton}
+              >
+                Cancelar
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleChangePassword}
+                loading={loadingPassword}
+                disabled={loadingPassword}
+                style={styles.modalButton}
+              >
+                Cambiar
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      </Portal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    padding: 24,
+    paddingTop: 60,
+    paddingBottom: 8,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  card: {
+    marginBottom: 12,
+    elevation: 4,
+  },
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#7b2cbf',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  name: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  email: {
+    color: '#666',
+  },
+  actionCard: {
+    marginBottom: 12,
+    elevation: 2,
+  },
+  actionCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  actionCardText: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  actionCardTitle: {
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  actionCardSubtitle: {
+    color: '#666',
+  },
+  logoutButton: {
+    marginTop: 16,
+    marginBottom: 32,
+  },
+  logoutButtonContent: {
+    paddingVertical: 8,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+  },
+  modalContent: {
+    width: '100%',
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  modalInput: {
+    marginBottom: 16,
+    backgroundColor: '#fff',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    gap: 12,
+  },
+  modalButton: {
+    minWidth: 100,
+  },
+});
