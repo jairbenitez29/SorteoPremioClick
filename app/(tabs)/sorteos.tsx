@@ -7,6 +7,23 @@ import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 
+// Función helper para verificar si un sorteo está vencido
+const isSorteoVencido = (fechaSorteo: string | Date): boolean => {
+  const fecha = new Date(fechaSorteo);
+  const ahora = new Date();
+  return fecha < ahora;
+};
+
+// Función helper para obtener el estado real del sorteo
+const getEstadoReal = (sorteo: any): 'activo' | 'finalizado' => {
+  // Si la fecha ya pasó, el sorteo está finalizado
+  if (isSorteoVencido(sorteo.fecha_sorteo)) {
+    return 'finalizado';
+  }
+  // Si no, usa el estado del backend
+  return sorteo.estado === 'activo' ? 'activo' : 'finalizado';
+};
+
 export default function SorteosScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -25,10 +42,11 @@ export default function SorteosScreen() {
       const response = await api.get('/sorteos');
       let data = response.data;
       
+      // Aplicar filtro basado en el estado real (considerando fecha)
       if (filter === 'activos') {
-        data = data.filter((s: any) => s.estado === 'activo');
+        data = data.filter((s: any) => getEstadoReal(s) === 'activo');
       } else if (filter === 'finalizados') {
-        data = data.filter((s: any) => s.estado === 'finalizado');
+        data = data.filter((s: any) => getEstadoReal(s) === 'finalizado');
       }
       
       setSorteos(data);
@@ -114,7 +132,9 @@ export default function SorteosScreen() {
             </Card.Content>
           </Card>
         ) : (
-          sorteos.map((sorteo) => (
+          sorteos.map((sorteo) => {
+            const estadoReal = getEstadoReal(sorteo);
+            return (
             <Card
               key={sorteo.id}
               style={styles.card}
@@ -122,7 +142,7 @@ export default function SorteosScreen() {
               onPress={() => router.push(`/sorteo/${sorteo.id}`)}
             >
               <SafeLinearGradient
-                colors={sorteo.estado === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
+                colors={estadoReal === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.cardGradient}
@@ -142,11 +162,11 @@ export default function SorteosScreen() {
                     <Chip
                       style={[
                         styles.statusChip,
-                        sorteo.estado === 'activo' && styles.statusChipActive,
+                        estadoReal === 'activo' && styles.statusChipActive,
                       ]}
                       textStyle={styles.statusChipText}
                     >
-                      {sorteo.estado === 'activo' ? '✨ Activo' : '✅ Finalizado'}
+                      {estadoReal === 'activo' ? '✨ Activo' : '✅ Finalizado'}
                     </Chip>
                   </View>
                   <Text variant="bodyMedium" style={styles.cardDescription}>
@@ -175,7 +195,7 @@ export default function SorteosScreen() {
                 </Card.Content>
               </SafeLinearGradient>
               <Card.Actions style={styles.cardActions}>
-                {sorteo.estado === 'activo' && (
+                {estadoReal === 'activo' && (
                   <Button
                     mode="contained"
                     buttonColor="#7b2cbf"
@@ -211,15 +231,15 @@ export default function SorteosScreen() {
                   </Button>
                 )}
                 <Button
-                  mode={sorteo.estado === 'activo' ? 'outlined' : 'contained'}
-                  buttonColor={sorteo.estado === 'activo' ? undefined : '#7b2cbf'}
-                  textColor={sorteo.estado === 'activo' ? '#7b2cbf' : '#fff'}
+                  mode={estadoReal === 'activo' ? 'outlined' : 'contained'}
+                  buttonColor={estadoReal === 'activo' ? undefined : '#7b2cbf'}
+                  textColor={estadoReal === 'activo' ? '#7b2cbf' : '#fff'}
                   onPress={() => router.push(`/sorteo/${sorteo.id}`)}
                   style={styles.actionButton}
                 >
                   Ver Detalles
                 </Button>
-                {sorteo.estado === 'finalizado' && (
+                {estadoReal === 'finalizado' && (
                   <Button
                     mode="contained"
                     buttonColor="#212121"
@@ -232,7 +252,8 @@ export default function SorteosScreen() {
                 )}
               </Card.Actions>
             </Card>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>

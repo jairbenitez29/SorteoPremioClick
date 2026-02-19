@@ -94,6 +94,7 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               mode="outlined"
               secureTextEntry
+              autoCapitalize="none"
               style={styles.input}
               textColor="#000"
               outlineColor="#7b2cbf"

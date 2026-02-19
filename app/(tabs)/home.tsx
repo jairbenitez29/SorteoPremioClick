@@ -7,6 +7,23 @@ import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 
+// Función helper para verificar si un sorteo está vencido
+const isSorteoVencido = (fechaSorteo: string | Date): boolean => {
+  const fecha = new Date(fechaSorteo);
+  const ahora = new Date();
+  return fecha < ahora;
+};
+
+// Función helper para obtener el estado real del sorteo
+const getEstadoReal = (sorteo: any): 'activo' | 'finalizado' => {
+  // Si la fecha ya pasó, el sorteo está finalizado
+  if (isSorteoVencido(sorteo.fecha_sorteo)) {
+    return 'finalizado';
+  }
+  // Si no, usa el estado del backend
+  return sorteo.estado === 'activo' ? 'activo' : 'finalizado';
+};
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -93,7 +110,9 @@ export default function HomeScreen() {
             </Card.Content>
           </Card>
         ) : (
-          sorteos.map((sorteo) => (
+          sorteos.map((sorteo) => {
+            const estadoReal = getEstadoReal(sorteo);
+            return (
             <Card
               key={sorteo.id}
               style={styles.card}
@@ -101,7 +120,7 @@ export default function HomeScreen() {
               onPress={() => router.push(`/sorteo/${sorteo.id}`)}
             >
               <SafeLinearGradient
-                colors={sorteo.estado === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
+                colors={estadoReal === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.cardGradient}
@@ -130,17 +149,17 @@ export default function HomeScreen() {
                       variant="labelSmall"
                       style={[
                         styles.badgeText,
-                        sorteo.estado === 'activo' && styles.badgeActive,
-                        sorteo.estado === 'finalizado' && styles.badgeFinished,
+                        estadoReal === 'activo' && styles.badgeActive,
+                        estadoReal === 'finalizado' && styles.badgeFinished,
                       ]}
                     >
-                      {sorteo.estado === 'activo' ? 'Activo' : 'Finalizado'}
+                      {estadoReal === 'activo' ? 'Activo' : 'Finalizado'}
                     </Text>
                   </View>
                 </Card.Content>
               </SafeLinearGradient>
               <Card.Actions style={styles.cardActions}>
-                {sorteo.estado === 'activo' && (
+                {estadoReal === 'activo' && (
                   <Button
                     mode="contained"
                     buttonColor="#7b2cbf"
@@ -176,16 +195,17 @@ export default function HomeScreen() {
                   </Button>
                 )}
                 <Button
-                  mode={sorteo.estado === 'activo' ? 'outlined' : 'contained'}
-                  buttonColor={sorteo.estado === 'activo' ? undefined : '#7b2cbf'}
-                  textColor={sorteo.estado === 'activo' ? '#7b2cbf' : '#fff'}
+                  mode={estadoReal === 'activo' ? 'outlined' : 'contained'}
+                  buttonColor={estadoReal === 'activo' ? undefined : '#7b2cbf'}
+                  textColor={estadoReal === 'activo' ? '#7b2cbf' : '#fff'}
                   onPress={() => router.push(`/sorteo/${sorteo.id}`)}
                 >
                   Ver Detalles
                 </Button>
               </Card.Actions>
             </Card>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>

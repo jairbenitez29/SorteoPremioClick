@@ -98,6 +98,7 @@ export default function RegisterScreen() {
               onChangeText={setPassword}
               mode="outlined"
               secureTextEntry
+              autoCapitalize="none"
               style={styles.input}
               textColor="#000"
             />

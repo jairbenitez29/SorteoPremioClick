@@ -8,6 +8,23 @@ import { format } from 'date-fns';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Función helper para verificar si un sorteo está vencido
+const isSorteoVencido = (fechaSorteo: string | Date): boolean => {
+  const fecha = new Date(fechaSorteo);
+  const ahora = new Date();
+  return fecha < ahora;
+};
+
+// Función helper para obtener el estado real del sorteo
+const getEstadoReal = (sorteo: any): 'activo' | 'finalizado' => {
+  // Si la fecha ya pasó, el sorteo está finalizado
+  if (isSorteoVencido(sorteo.fecha_sorteo)) {
+    return 'finalizado';
+  }
+  // Si no, usa el estado del backend
+  return sorteo.estado === 'activo' ? 'activo' : 'finalizado';
+};
+
 export default function SorteoDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -88,7 +105,8 @@ export default function SorteoDetailScreen() {
     );
   }
 
-  const canBuy = sorteo.estado === 'activo' && sorteo.estadisticas?.tickets_disponibles > 0;
+  const estadoReal = getEstadoReal(sorteo);
+  const canBuy = estadoReal === 'activo' && sorteo.estadisticas?.tickets_disponibles > 0;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -109,11 +127,11 @@ export default function SorteoDetailScreen() {
             <Chip
               style={[
                 styles.statusChip,
-                sorteo.estado === 'activo' && styles.statusChipActive,
+                estadoReal === 'activo' && styles.statusChipActive,
               ]}
               textStyle={styles.statusChipText}
             >
-              {sorteo.estado}
+              {estadoReal === 'activo' ? 'Activo' : 'Finalizado'}
             </Chip>
           </View>
 
@@ -247,7 +265,7 @@ export default function SorteoDetailScreen() {
             )}
           </View>
 
-          {sorteo.estado === 'finalizado' && sorteo.ganadores && (
+          {estadoReal === 'finalizado' && sorteo.ganadores && (
             <>
               <Divider style={styles.divider} />
               <View style={styles.ganadoresSection}>
@@ -313,7 +331,7 @@ export default function SorteoDetailScreen() {
         </View>
       )}
 
-      {sorteo.estado === 'finalizado' && (
+      {estadoReal === 'finalizado' && (
         <View style={styles.actionsContainer}>
           <Button
             mode="outlined"

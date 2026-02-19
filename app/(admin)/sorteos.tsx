@@ -7,6 +7,23 @@ import { format } from 'date-fns';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 import { useCallback } from 'react';
 
+// Función helper para verificar si un sorteo está vencido
+const isSorteoVencido = (fechaSorteo: string | Date): boolean => {
+  const fecha = new Date(fechaSorteo);
+  const ahora = new Date();
+  return fecha < ahora;
+};
+
+// Función helper para obtener el estado real del sorteo
+const getEstadoReal = (sorteo: any): 'activo' | 'finalizado' => {
+  // Si la fecha ya pasó, el sorteo está finalizado
+  if (isSorteoVencido(sorteo.fecha_sorteo)) {
+    return 'finalizado';
+  }
+  // Si no, usa el estado del backend
+  return sorteo.estado === 'activo' ? 'activo' : 'finalizado';
+};
+
 export default function AdminSorteos() {
   const router = useRouter();
   const [sorteos, setSorteos] = useState<any[]>([]);
@@ -120,10 +137,12 @@ export default function AdminSorteos() {
             </Card.Content>
           </Card>
         ) : (
-          sorteos.map((sorteo) => (
+          sorteos.map((sorteo) => {
+            const estadoReal = getEstadoReal(sorteo);
+            return (
             <Card key={sorteo.id} style={styles.card} mode="elevated">
               <SafeLinearGradient
-                colors={sorteo.estado === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
+                colors={estadoReal === 'activo' ? ['#ffffff', '#f3e8ff', '#e9d5ff'] : ['#ffffff', '#f5f5f5', '#e0e0e0']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.cardGradient}
@@ -136,11 +155,11 @@ export default function AdminSorteos() {
                     <Chip
                       style={[
                         styles.statusChip,
-                        sorteo.estado === 'activo' && styles.statusChipActive,
+                        estadoReal === 'activo' && styles.statusChipActive,
                       ]}
                       textStyle={styles.statusChipText}
                     >
-                      {sorteo.estado === 'activo' ? '✨ Activo' : '✅ Finalizado'}
+                      {estadoReal === 'activo' ? '✨ Activo' : '✅ Finalizado'}
                     </Chip>
                   </View>
                   <Text variant="bodyMedium" style={styles.cardDescription}>
@@ -182,7 +201,7 @@ export default function AdminSorteos() {
                 >
                   Editar
                 </Button>
-                {sorteo.estado === 'activo' && (
+                {estadoReal === 'activo' && (
                   <Button
                     mode="contained"
                     buttonColor="#212121"
@@ -201,7 +220,8 @@ export default function AdminSorteos() {
                 />
               </Card.Actions>
             </Card>
-          ))
+            );
+          })
         )}
       </ScrollView>
 
