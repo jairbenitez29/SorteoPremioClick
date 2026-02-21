@@ -7,10 +7,14 @@ import { api } from '../../services/api';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ErrorDisplay } from '../../components/ErrorDisplay';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 export default function ProfileScreen() {
   const { user, logout, updateUser } = useAuth();
   const router = useRouter();
+  const { errorVisible, errorTitle, errorMessage, errorType, showError, hideError } = useErrorHandler();
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showNombreModal, setShowNombreModal] = useState(false);
@@ -24,6 +28,9 @@ export default function ProfileScreen() {
   const [nuevaPassword, setNuevaPassword] = useState('');
   const [confirmarPassword, setConfirmarPassword] = useState('');
   const [loadingPassword, setLoadingPassword] = useState(false);
+  const [showPasswordActual, setShowPasswordActual] = useState(false);
+  const [showNuevaPassword, setShowNuevaPassword] = useState(false);
+  const [showConfirmarPassword, setShowConfirmarPassword] = useState(false);
   
   // Estados para editar nombre
   const [nuevoNombre, setNuevoNombre] = useState(user?.nombre || '');
@@ -55,7 +62,7 @@ export default function ProfileScreen() {
       }
       setShowEmailModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el email');
+      showError(error);
     } finally {
       setLoadingEmail(false);
     }
@@ -80,7 +87,7 @@ export default function ProfileScreen() {
       }
       setShowNombreModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el nombre');
+      showError(error);
     } finally {
       setLoadingNombre(false);
     }
@@ -113,8 +120,11 @@ export default function ProfileScreen() {
       setNuevaPassword('');
       setConfirmarPassword('');
       setShowPasswordModal(false);
+      setShowPasswordActual(false);
+      setShowNuevaPassword(false);
+      setShowConfirmarPassword(false);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo cambiar la contraseña');
+      showError(error);
     } finally {
       setLoadingPassword(false);
     }
@@ -138,15 +148,15 @@ export default function ProfileScreen() {
     );
   };
 
-  const getWebUrl = () => {
+  const getWebUrl = async () => {
     // Obtener la URL base del API y construir la URL de la página web
-    const apiBaseUrl = (api && api.defaults && api.defaults.baseURL) || 'https://sorteos-app-orcin.vercel.app/api';
+    const apiBaseUrl = (api && api.defaults && api.defaults.baseURL) || 'https://premioclick.cl/api';
     // Remover /api del final si existe
     let webUrl = apiBaseUrl.replace(/\/api$/, '');
     
-    // Si no tiene protocolo, agregar http://
+    // Si no tiene protocolo, agregar https://
     if (!webUrl.startsWith('http://') && !webUrl.startsWith('https://')) {
-      webUrl = `http://${webUrl}`;
+      webUrl = `https://${webUrl}`;
     }
     
     // Si termina con :3001, remover el puerto para producción
@@ -154,23 +164,51 @@ export default function ProfileScreen() {
       webUrl = webUrl.replace(':3001', '');
     }
     
-    // En producción, usar siempre la URL de Vercel
-    if (!__DEV__) {
-      webUrl = 'https://sorteos-app-orcin.vercel.app';
+    // En producción, usar siempre la URL de premioclick.cl
+    if (!__DEV__ || apiBaseUrl.includes('premioclick.cl')) {
+      webUrl = 'https://premioclick.cl';
     }
     
-    console.log('🌐 URL de la página web:', webUrl);
+    // Obtener el token de autenticación
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token && user) {
+        // Pasar el token como parámetro en la URL para que la web pueda autenticar automáticamente
+        const separator = webUrl.includes('?') ? '&' : '?';
+        webUrl = `${webUrl}${separator}token=${encodeURIComponent(token)}&autoLogin=true`;
+        console.log('🔐 Token incluido en URL para autenticación automática');
+      }
+    } catch (error) {
+      console.error('❌ Error al obtener token:', error);
+    }
+    
+    console.log('🌐 URL de la página web:', webUrl.replace(/token=[^&]+/, 'token=***'));
     return webUrl;
   };
 
   const handleOpenWebPage = async () => {
     try {
-      const webUrl = getWebUrl();
-      console.log('🔗 Abriendo página web:', webUrl);
+      if (!user) {
+        Alert.alert(
+          'Sesión Requerida',
+          'Debes estar logueado para acceder a las premiaciones en línea. ¿Deseas iniciar sesión?',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Iniciar Sesión',
+              onPress: () => router.push('/(auth)/login'),
+            },
+          ]
+        );
+        return;
+      }
+
+      const webUrl = await getWebUrl();
+      console.log('🔗 Abriendo página web con autenticación automática');
       await WebBrowser.openBrowserAsync(webUrl);
     } catch (error: any) {
       console.error('❌ Error al abrir página web:', error);
-      Alert.alert('Error', `No se pudo abrir la página web: ${error.message || 'Error desconocido'}`);
+      showError(error);
     }
   };
 
@@ -353,6 +391,14 @@ export default function ProfileScreen() {
         </Button>
       </ScrollView>
 
+      <ErrorDisplay
+        visible={errorVisible}
+        title={errorTitle}
+        message={errorMessage}
+        type={errorType}
+        onDismiss={hideError}
+      />
+
       {/* Modal para editar nombre */}
       <Portal>
         <Modal
@@ -453,27 +499,45 @@ export default function ProfileScreen() {
               value={passwordActual}
               onChangeText={setPasswordActual}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showPasswordActual}
               style={styles.modalInput}
               textColor="#000"
+              right={
+                <TextInput.Icon
+                  icon={showPasswordActual ? 'eye-off' : 'eye'}
+                  onPress={() => setShowPasswordActual(!showPasswordActual)}
+                />
+              }
             />
             <TextInput
               label="Nueva Contraseña *"
               value={nuevaPassword}
               onChangeText={setNuevaPassword}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showNuevaPassword}
               style={styles.modalInput}
               textColor="#000"
+              right={
+                <TextInput.Icon
+                  icon={showNuevaPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowNuevaPassword(!showNuevaPassword)}
+                />
+              }
             />
             <TextInput
               label="Confirmar Nueva Contraseña *"
               value={confirmarPassword}
               onChangeText={setConfirmarPassword}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showConfirmarPassword}
               style={styles.modalInput}
               textColor="#000"
+              right={
+                <TextInput.Icon
+                  icon={showConfirmarPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowConfirmarPassword(!showConfirmarPassword)}
+                />
+              }
             />
             <View style={styles.modalButtons}>
               <Button
@@ -483,6 +547,9 @@ export default function ProfileScreen() {
                   setPasswordActual('');
                   setNuevaPassword('');
                   setConfirmarPassword('');
+                  setShowPasswordActual(false);
+                  setShowNuevaPassword(false);
+                  setShowConfirmarPassword(false);
                 }}
                 style={styles.modalButton}
               >

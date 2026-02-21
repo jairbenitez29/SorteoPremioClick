@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PremioClick - Sorteos en Vivo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="#" class="logo" id="logoLink" style="text-decoration: none; cursor: pointer;">
+                <img src="logo.png" alt="PremioClick" class="logo-img">
+                <span>PremioClick</span>
+            </a>
+            <div class="header-actions">
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <span class="user-name" id="userNameDisplay"></span>
+                    <button class="ganadores-btn" id="ganadoresBtn" style="display: none;" title="Escoger Ganadores">
+                        <i class="fas fa-trophy"></i>
+                        <span>Escoger Ganadores</span>
+                    </button>
+                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+                <button class="login-btn" id="loginBtn" style="display: none;">
+                    <i class="fas fa-user"></i>
+                    <span>Iniciar Sesión</span>
+                </button>
+                <button class="chat-toggle" id="chatToggle">
+                    <i class="fas fa-comments"></i>
+                    <span>Chat</span>
+                    <span class="badge" id="chatBadge" style="display: none;">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Sorteos en Vivo</h1>
+            <p>Participa en nuestros emocionantes sorteos y gana increíbles premios</p>
+        </div>
+    </section>
+
+    <!-- Sorteos Section -->
+    <section class="sorteos-section">
+        <div class="container">
+            <div class="filter-tabs">
+                <button class="filter-btn active" data-filter="todos">Todos</button>
+                <button class="filter-btn" data-filter="activo">Activos</button>
+                <button class="filter-btn" data-filter="finalizado">Finalizados</button>
+            </div>
+
+            <div class="sorteos-grid" id="sorteosGrid">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando sorteos...</p>
+                </div>
+            </div>
+            
+            <div class="comprar-section-main" style="text-align: center; margin-top: 2rem;">
+                <button class="comprar-ticket-main-btn" id="comprarTicketMainBtn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Comprar Tickets</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Info Section -->
+    <section class="info-section">
+        <div class="container">
+            <div class="info-header">
+                <h2 class="info-title">¿Cómo funciona PremioClick?</h2>
+                <p class="info-subtitle">Participa en sorteos de forma fácil, segura y transparente</p>
+            </div>
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-number">01</div>
+                    <div class="info-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Explora los sorteos</h3>
+                    <p>Navega por nuestra plataforma y descubre los sorteos activos disponibles. Cada sorteo incluye información detallada sobre los premios, fecha del sorteo y tickets disponibles.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-number">02</div>
+                    <div class="info-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h3>Compra tus tickets</h3>
+                    <p>Selecciona el sorteo que más te guste y compra tus tickets de forma segura. Aceptamos pagos con PayPal, garantizando transacciones 100% seguras.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-number">03</div>
+                    <div class="info-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3>Espera el sorteo</h3>
+                    <p>El sorteo se realizará en la fecha y hora programada. Puedes seguir el proceso en tiempo real a través de nuestra plataforma y recibir notificaciones.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-number">04</div>
+                    <div class="info-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3>¡Recibe tu premio!</h3>
+                    <p>Si eres ganador, te contactaremos inmediatamente para coordinar la entrega de tu premio. Los resultados se publican de forma transparente y en tiempo real.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</h2>
+                <button class="close-modal" id="closeLoginModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i> Email
+                        </label>
+                        <input type="email" id="email" name="email" required placeholder="tu@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Contraseña
+                        </label>
+                        <input type="password" id="password" name="password" required placeholder="Tu contraseña">
+                    </div>
+                    <div class="error-message" id="loginError" style="display: none;"></div>
+                    <button type="submit" class="submit-btn" id="loginSubmitBtn">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Iniciar Sesión</span>
+                    </button>
+                    <div class="form-footer">
+                        <p>¿No tienes cuenta? <a href="#" id="switchToRegister">Regístrate aquí</a></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> Registrarse</h2>
+                <button class="close-modal" id="closeRegisterModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="registerNombre">
+                            <i class="fas fa-user"></i> Nombre
+                        </label>
+                        <input type="text" id="registerNombre" name="nombre" required placeholder="Tu nombre completo">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">
+                            <i class="fas fa-envelope"></i> Email
+                        </label>
+                        <input type="email" id="registerEmail" name="email" required placeholder="tu@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">
+                            <i class="fas fa-lock"></i> Contraseña
+                        </label>
+                        <input type="password" id="registerPassword" name="password" required placeholder="Mínimo 6 caracteres" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerTelefono">
+                            <i class="fas fa-phone"></i> Teléfono (Opcional)
+                        </label>
+                        <input type="tel" id="registerTelefono" name="telefono" placeholder="Tu número de teléfono">
+                    </div>
+                    <div class="error-message" id="registerError" style="display: none;"></div>
+                    <button type="submit" class="submit-btn" id="registerSubmitBtn">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Registrarse</span>
+                    </button>
+                    <div class="form-footer">
+                        <p>¿Ya tienes cuenta? <a href="#" id="switchToLogin">Inicia sesión aquí</a></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div class="chat-modal" id="chatModal">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h3><i class="fas fa-comments"></i> Chat en Vivo</h3>
+                <button class="close-chat" id="closeChat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Bienvenido al chat.</p>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." class="chat-input">
+                    <button id="sendBtn" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Seleccionar Sorteo -->
+    <div class="modal" id="seleccionarSorteoModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-ticket-alt"></i> Selecciona un Sorteo</h2>
+                <button class="close-modal" id="closeSeleccionarSorteoModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="sorteosLista" style="max-height: 400px; overflow-y: auto;">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Cargando sorteos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 PremioClick. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Script de auto-login (DEBE IR ANTES de script.js) -->
+    <script src="/web-auto-login.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

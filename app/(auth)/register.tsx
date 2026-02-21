@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, Snackbar } from 'react-native-paper';
+import { TextInput, Button, Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+import { ErrorDisplay } from '../../components/ErrorDisplay';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 export default function RegisterScreen() {
   const [nombre, setNombre] = useState('');
@@ -11,23 +13,22 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [telefono, setTelefono] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const { register } = useAuth();
   const router = useRouter();
+  const { errorVisible, errorTitle, errorMessage, errorType, showError, hideError } = useErrorHandler();
 
   const handleRegister = async () => {
     if (!nombre || !email || !password) {
-      setError('Por favor completa los campos obligatorios');
+      showError('Por favor completa los campos obligatorios');
       return;
     }
 
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+      showError('La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       // Solo pasar telefono si tiene valor
@@ -40,8 +41,38 @@ export default function RegisterScreen() {
         router.replace('/(tabs)/home');
       }
     } catch (err: any) {
+      // Log técnico solo en consola (no se muestra al usuario)
       console.error('Error en handleRegister:', err);
-      setError(err.message || 'Error al registrarse');
+      
+      // El error ya viene formateado desde AuthContext (sin información técnica)
+      // Asegurarse de que nunca se muestre información técnica
+      let errorMsg = err.message || 'Error al registrarse';
+      
+      // Filtrar CUALQUIER mensaje técnico que pueda haber escapado
+      const technicalPatterns = [
+        'AxiosError', 'Request failed', 'status code', 'ECONN', 'ERR_', 
+        'Network Error', 'timeout', 'ECONNABORTED', 'ECONNREFUSED',
+        'ENOTFOUND', 'EAI_AGAIN', 'getaddrinfo', 'socket', 'XMLHttpRequest',
+        'fetch', 'axios', 'http', 'https', '://', 'localhost', '127.0.0.1'
+      ];
+      
+      const hasTechnicalContent = technicalPatterns.some(pattern => 
+        errorMsg.toLowerCase().includes(pattern.toLowerCase())
+      );
+      
+      if (hasTechnicalContent) {
+        // Si tiene contenido técnico, usar mensaje genérico según el contexto
+        if (errorMsg.includes('409') || errorMsg.includes('email') && errorMsg.includes('registrado')) {
+          errorMsg = 'El email ya está registrado. Por favor, usa otro email o inicia sesión.';
+        } else if (errorMsg.includes('400')) {
+          errorMsg = 'Los datos enviados no son válidos. Por favor, verifica la información.';
+        } else {
+          errorMsg = 'Error al registrarse. Por favor, verifica la información e intenta de nuevo.';
+        }
+      }
+      
+      // Pasar como string para que useErrorHandler lo filtre también
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -127,14 +158,13 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
 
-        <Snackbar
-          visible={!!error}
-          onDismiss={() => setError('')}
-          duration={3000}
-          style={styles.snackbar}
-        >
-          {error}
-        </Snackbar>
+        <ErrorDisplay
+          visible={errorVisible}
+          title={errorTitle}
+          message={errorMessage}
+          type={errorType}
+          onDismiss={hideError}
+        />
       </SafeLinearGradient>
     </KeyboardAvoidingView>
   );
@@ -186,9 +216,6 @@ const styles = StyleSheet.create({
   },
   linkButton: {
     marginTop: 8,
-  },
-  snackbar: {
-    marginBottom: 20,
   },
 });
 

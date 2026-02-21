@@ -1,26 +1,27 @@
 import { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { TextInput, Button, Text, Snackbar, IconButton } from 'react-native-paper';
+import { TextInput, Button, Text, IconButton } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+import { ErrorDisplay } from '../../components/ErrorDisplay';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const { login } = useAuth();
   const router = useRouter();
+  const { errorVisible, errorTitle, errorMessage, errorType, showError, hideError } = useErrorHandler();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Por favor completa todos los campos');
+      showError('Por favor completa todos los campos');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const userData = await login(email, password);
@@ -34,7 +35,35 @@ export default function LoginScreen() {
         router.replace('/(tabs)/home');
       }
     } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+      // El error ya viene formateado desde AuthContext (sin información técnica)
+      // Asegurarse de que nunca se muestre información técnica
+      let errorMsg = err.message || 'Error al iniciar sesión';
+      
+      // Filtrar CUALQUIER mensaje técnico que pueda haber escapado
+      const technicalPatterns = [
+        'AxiosError', 'Request failed', 'status code', 'ECONN', 'ERR_', 
+        'Network Error', 'timeout', 'ECONNABORTED', 'ECONNREFUSED',
+        'ENOTFOUND', 'EAI_AGAIN', 'getaddrinfo', 'socket', 'XMLHttpRequest',
+        'fetch', 'axios', 'http', 'https', '://', 'localhost', '127.0.0.1'
+      ];
+      
+      const hasTechnicalContent = technicalPatterns.some(pattern => 
+        errorMsg.toLowerCase().includes(pattern.toLowerCase())
+      );
+      
+      if (hasTechnicalContent) {
+        // Si tiene contenido técnico, usar mensaje genérico según el contexto
+        if (errorMsg.includes('401') || errorMsg.includes('403')) {
+          errorMsg = 'Email o contraseña incorrectos. Por favor, verifica tus credenciales.';
+        } else if (errorMsg.includes('400')) {
+          errorMsg = 'Los datos enviados no son válidos. Por favor, verifica la información.';
+        } else {
+          errorMsg = 'Error al iniciar sesión. Por favor, verifica tus credenciales e intenta de nuevo.';
+        }
+      }
+      
+      // Pasar como string para que useErrorHandler lo filtre también
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -125,14 +154,13 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
 
-        <Snackbar
-          visible={!!error}
-          onDismiss={() => setError('')}
-          duration={3000}
-          style={styles.snackbar}
-        >
-          {error}
-        </Snackbar>
+        <ErrorDisplay
+          visible={errorVisible}
+          title={errorTitle}
+          message={errorMessage}
+          type={errorType}
+          onDismiss={hideError}
+        />
       </SafeLinearGradient>
     </KeyboardAvoidingView>
   );
@@ -203,9 +231,6 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  snackbar: {
-    marginBottom: 20,
   },
 });
 

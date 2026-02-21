@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premioclick - Premiaciones en Línea</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #7b2cbf;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .user-info {
+            display: none;
+            background: #f3e8ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .user-info.active {
+            display: block;
+        }
+        
+        .user-info h2 {
+            color: #7b2cbf;
+            margin-bottom: 10px;
+        }
+        
+        .user-info p {
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        .login-form {
+            display: block;
+        }
+        
+        .login-form.hidden {
+            display: none;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #7b2cbf;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #7b2cbf;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #6a1b9a;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #7b2cbf;
+            margin: 20px 0;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎁 Premiaciones en Línea</h1>
+        <p class="subtitle">Premioclick</p>
+        
+        <!-- Mensaje de error -->
+        <div id="error-message" class="error"></div>
+        
+        <!-- Información del usuario (cuando está autenticado) -->
+        <div id="user-info" class="user-info">
+            <h2>👤 Bienvenido</h2>
+            <p><strong>Nombre:</strong> <span id="user-name">-</span></p>
+            <p><strong>Email:</strong> <span id="user-email">-</span></p>
+            <p><strong>Rol:</strong> <span id="user-role">-</span></p>
+            <button onclick="logout()" style="margin-top: 15px; background: #d32f2f;">
+                Cerrar Sesión
+            </button>
+        </div>
+        
+        <!-- Formulario de login (cuando no está autenticado) -->
+        <div id="login-form" class="login-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="tu@email.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" placeholder="Tu contraseña" required>
+            </div>
+            <button onclick="login()">Iniciar Sesión</button>
+        </div>
+        
+        <!-- Mensaje de carga -->
+        <div id="loading" class="loading" style="display: none;">
+            Autenticando...
+        </div>
+    </div>
+
+    <!-- Incluir el script de auto-login -->
+    <script src="/js/web-auto-login.js"></script>
+    
+    <!-- Tu código de aplicación -->
+    <script>
+        const API_URL = 'https://premioclick.cl/api';
+        
+        // Función para mostrar error
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Función para actualizar UI cuando el usuario está autenticado
+        function updateUIForAuthenticatedUser(user) {
+            // Ocultar formulario de login
+            document.getElementById('login-form').classList.add('hidden');
+            
+            // Mostrar información del usuario
+            document.getElementById('user-name').textContent = user.nombre || '-';
+            document.getElementById('user-email').textContent = user.email || '-';
+            document.getElementById('user-role').textContent = user.rol || 'usuario';
+            document.getElementById('user-info').classList.add('active');
+            
+            // Ocultar loading
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // Función para actualizar UI cuando el usuario NO está autenticado
+        function updateUIForUnauthenticatedUser() {
+            // Mostrar formulario de login
+            document.getElementById('login-form').classList.remove('hidden');
+            
+            // Ocultar información del usuario
+            document.getElementById('user-info').classList.remove('active');
+        }
+        
+        // Función de login manual
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showError('Por favor completa todos los campos');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token && data.user) {
+                    // Guardar token y usuario
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Actualizar UI
+                    updateUIForAuthenticatedUser(data.user);
+                } else {
+                    showError(data.error || 'Error al iniciar sesión');
+                }
+            } catch (error) {
+                showError('Error de conexión. Por favor intenta de nuevo.');
+                console.error('Error en login:', error);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        // Función de logout
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            updateUIForUnauthenticatedUser();
+        }
+        
+        // Escuchar el evento de autenticación desde el script de auto-login
+        window.addEventListener('userAuthenticated', function(event) {
+            const { user, token } = event.detail;
+            console.log('Usuario autenticado automáticamente:', user);
+            updateUIForAuthenticatedUser(user);
+        });
+        
+        // Verificar si ya hay sesión al cargar la página
+        window.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            
+            if (token && userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    // Verificar que el token sigue siendo válido
+                    fetch(`${API_URL}/auth/verify`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            updateUIForAuthenticatedUser(user);
+                        } else {
+                            // Token inválido, limpiar
+                            logout();
+                        }
+                    })
+                    .catch(() => {
+                        // Error de conexión, pero mostrar usuario de todas formas
+                        updateUIForAuthenticatedUser(user);
+                    });
+                } catch (error) {
+                    console.error('Error al cargar sesión:', error);
+                    logout();
+                }
+            }
+        });
+        
+        // Permitir login con Enter
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
