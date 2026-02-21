@@ -30,7 +30,9 @@ export default function RegisterScreen() {
     setError('');
 
     try {
-      const userData = await register(nombre, email, password, telefono);
+      // Solo pasar telefono si tiene valor
+      const telefonoValue = telefono.trim() !== '' ? telefono.trim() : undefined;
+      const userData = await register(nombre.trim(), email.trim(), password, telefonoValue);
       // Redirigir según el rol del usuario (normalmente será 'usuario' al registrarse)
       if (userData?.rol === 'admin') {
         router.replace('/(admin)/dashboard');
@@ -38,6 +40,7 @@ export default function RegisterScreen() {
         router.replace('/(tabs)/home');
       }
     } catch (err: any) {
+      console.error('Error en handleRegister:', err);
       setError(err.message || 'Error al registrarse');
     } finally {
       setLoading(false);

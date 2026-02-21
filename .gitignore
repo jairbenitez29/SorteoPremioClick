@@ -15,3 +15,7 @@ web-build/
 .DS_Store
 *.log
 
+# Carpetas del proyecto que no deben incluirse en el build
+imagenes/
+backend/
+web/

@@ -85,7 +85,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (nombre: string, email: string, password: string, telefono?: string) => {
     try {
-      const response = await api.post('/auth/register', { nombre, email, password, telefono });
+      // Preparar el payload, solo incluir telefono si tiene valor
+      const payload: any = { nombre, email, password };
+      if (telefono && telefono.trim() !== '') {
+        payload.telefono = telefono.trim();
+      }
+      
+      console.log('📤 Enviando registro con payload:', { ...payload, password: '***' });
+      
+      const response = await api.post('/auth/register', payload);
       const { token, user } = response.data;
       
       await AsyncStorage.setItem('token', token);
@@ -93,10 +101,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       return user; // Retornar el usuario para que el registro pueda verificar el rol
     } catch (error: any) {
-      console.error('Error en register:', error);
-      const errorMessage = error.response?.data?.error || 
-                          (error.response?.data?.errors ? error.response.data.errors.map((e: any) => e.msg).join(', ') : null) ||
-                          'Error al registrarse. Verifica tu conexión.';
+      console.error('❌ Error en register:', error);
+      console.error('❌ Response status:', error.response?.status);
+      console.error('❌ Response data:', JSON.stringify(error.response?.data, null, 2));
+      
+      // Extraer el mensaje de error del backend
+      let errorMessage = 'Error al registrarse. Verifica tu conexión.';
+      
+      if (error.response?.data) {
+        // Intentar diferentes formatos de error del backend
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.map((e: any) => e.msg || e.message || e).join(', ');
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       throw new Error(errorMessage);
     }
   };
