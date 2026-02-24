@@ -45,7 +45,7 @@ export default function EditarSorteo() {
       setTitulo(sorteo.titulo);
       setDescripcion(sorteo.descripcion || '');
       setLink(sorteo.link || '');
-      setEstado(sorteo.estado);
+      setEstado(sorteo.estado === 'finalizado' ? 'finalizado' : 'activo');
       
       const fecha = new Date(sorteo.fecha_sorteo);
       setFechaSorteo(fecha);
@@ -366,21 +366,8 @@ export default function EditarSorteo() {
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      console.error('Error al actualizar:', error);
-      const url = error.config?.url || error.config?.baseURL || '';
-      const data = error.response?.data;
-      const status = error.response?.status;
-      let msg = 'No se pudo actualizar el sorteo.';
-      if (typeof data === 'object' && (data?.error ?? data?.message)) {
-        msg = String(data?.error ?? data?.message);
-      } else if (data && typeof data === 'string') {
-        msg = data;
-      } else if (error.message) {
-        msg = error.message;
-      }
-      if (status) msg = `[${status}] ${msg}`;
-      if (__DEV__ && url) console.warn('Request que falló:', error.config?.method, url, data);
-      Alert.alert('Error al actualizar', msg);
+      if (__DEV__) console.warn('Error al actualizar:', error?.response?.data || error?.message);
+      Alert.alert('Error', 'No se pudo actualizar el sorteo. Intenta de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -547,14 +534,25 @@ export default function EditarSorteo() {
             )}
           </View>
 
-          <TextInput
-            label="Estado"
-            value={estado}
-            onChangeText={setEstado}
-            mode="outlined"
-            style={styles.input}
-            textColor="#000"
-          />
+          <Text variant="bodyMedium" style={{ marginBottom: 8, fontWeight: '600' }}>Estado</Text>
+          <View style={styles.estadoRow}>
+            <Button
+              mode={estado === 'activo' ? 'contained' : 'outlined'}
+              onPress={() => setEstado('activo')}
+              style={styles.estadoButton}
+              buttonColor={estado === 'activo' ? '#7b2cbf' : undefined}
+            >
+              Activo
+            </Button>
+            <Button
+              mode={estado === 'finalizado' ? 'contained' : 'outlined'}
+              onPress={() => setEstado('finalizado')}
+              style={styles.estadoButton}
+              buttonColor={estado === 'finalizado' ? '#4caf50' : undefined}
+            >
+              Finalizado
+            </Button>
+          </View>
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Premios
@@ -850,6 +848,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
     color: '#ff9800',
+  },
+  estadoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  estadoButton: {
+    flex: 1,
   },
   addButton: {
     marginTop: 8,

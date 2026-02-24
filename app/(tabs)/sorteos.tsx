@@ -41,36 +41,15 @@ export default function SorteosScreen() {
       setLoading(true);
       const response = await api.get('/sorteos');
       let data = response.data;
-      
-      // Aplicar filtro basado en el estado real (considerando fecha)
       if (filter === 'activos') {
         data = data.filter((s: any) => getEstadoReal(s) === 'activo');
       } else if (filter === 'finalizados') {
         data = data.filter((s: any) => getEstadoReal(s) === 'finalizado');
       }
-      
       setSorteos(data);
-    } catch (error: any) {
-      console.error('Error al cargar sorteos:', error);
-      console.error('Detalles del error:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        config: error.config?.url
-      });
-      
-      let errorMessage = 'No se pudieron cargar los sorteos.';
-      let errorTitle = 'Error de Conexión';
-      
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = 'El servidor está tardando demasiado en responder.\n\nVerifica:\n• Que el backend esté corriendo\n• Que la IP configurada sea correcta (192.168.1.59)\n• Que ambos dispositivos estén en la misma red WiFi';
-      } else if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error') || error.message?.includes('ERR_NETWORK')) {
-        errorMessage = 'No se pudo conectar al servidor.\n\nVerifica:\n• Que el backend esté corriendo en el puerto 3001\n• Que la IP configurada sea correcta\n• Que el firewall no esté bloqueando la conexión\n• Que ambos dispositivos estén en la misma red WiFi';
-      } else if (error.response) {
-        errorMessage = `Error del servidor: ${error.response.status}\n${error.response.data?.error || error.response.data?.message || ''}`;
-      }
-      
-      Alert.alert(errorTitle, errorMessage, [{ text: 'OK' }]);
+    } catch {
+      if (__DEV__) console.warn('No se pudieron cargar los sorteos');
+      setSorteos([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

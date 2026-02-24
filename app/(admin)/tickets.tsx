@@ -64,8 +64,9 @@ export default function AdminTickets() {
       if (response.data.length > 0 && !selectedSorteo) {
         setSelectedSorteo(response.data[0].id);
       }
-    } catch (error) {
-      console.error('Error al cargar sorteos:', error);
+    } catch {
+      if (__DEV__) console.warn('No se pudieron cargar los sorteos');
+      setSorteos([]);
     } finally {
       setLoading(false);
     }
@@ -77,8 +78,9 @@ export default function AdminTickets() {
       // Obtener todos los tickets de todos los sorteos
       const response = await api.get('/admin/tickets');
       setTickets(response.data);
-    } catch (error) {
-      console.error('Error al cargar tickets:', error);
+    } catch {
+      if (__DEV__) console.warn('No se pudieron cargar los tickets');
+      setTickets([]);
     } finally {
       setLoadingTickets(false);
     }
@@ -99,7 +101,7 @@ export default function AdminTickets() {
               Alert.alert('Éxito', 'Ticket eliminado correctamente');
               loadTickets();
             } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.error || 'No se pudo eliminar el ticket');
+              Alert.alert('Error', 'No se pudo eliminar el ticket.');
             }
           },
         },
@@ -127,7 +129,7 @@ export default function AdminTickets() {
               Alert.alert('Éxito', `${response.data.eliminados || disponibles} tickets eliminados correctamente`);
               loadTickets();
             } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.error || 'No se pudieron eliminar los tickets');
+              Alert.alert('Error', 'No se pudieron eliminar los tickets.');
             }
           },
         },
@@ -159,7 +161,7 @@ export default function AdminTickets() {
       // Recargar tickets después de generarlos
       loadTickets();
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'No se pudieron generar los tickets');
+      Alert.alert('Error', 'No se pudieron generar los tickets. Intenta de nuevo.');
     } finally {
       setGenerating(false);
     }

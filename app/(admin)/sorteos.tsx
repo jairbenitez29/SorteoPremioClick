@@ -45,8 +45,9 @@ export default function AdminSorteos() {
     try {
       const response = await api.get('/sorteos');
       setSorteos(response.data);
-    } catch (error) {
-      console.error('Error al cargar sorteos:', error);
+    } catch {
+      if (__DEV__) console.warn('No se pudieron cargar los sorteos');
+      setSorteos([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -94,7 +95,7 @@ export default function AdminSorteos() {
               Alert.alert('Éxito', 'Sorteo realizado correctamente');
               loadSorteos();
             } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.error || 'No se pudo realizar el sorteo');
+              Alert.alert('Error', 'No se pudo realizar el sorteo. Intenta de nuevo.');
             }
           },
         },
