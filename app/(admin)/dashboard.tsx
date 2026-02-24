@@ -106,16 +106,6 @@ export default function AdminDashboard() {
               </View>
 
               <View style={styles.statBox}>
-                <MaterialCommunityIcons name="ticket-percent" size={22} color="#666" />
-                <Text style={styles.statNumber}>
-                  {stats?.tickets_vendidos || 0}
-                </Text>
-                <Text style={styles.statLabel}>
-                  Vendidos
-                </Text>
-              </View>
-
-              <View style={styles.statBox}>
                 <MaterialCommunityIcons name="cash-multiple" size={22} color="#666" />
                 <Text style={styles.statNumber}>
                   ${stats?.ingresos_totales || 0}

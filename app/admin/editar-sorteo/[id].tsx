@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, Image, TouchableOpacity } from 'react-native';
 import { Card, Text, Button, TextInput, ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,6 +21,7 @@ export default function EditarSorteo() {
   const [estado, setEstado] = useState('activo');
   const [productos, setProductos] = useState([{ nombre: '', descripcion: '', posicion_premio: 1 }]);
   const [imagenes, setImagenes] = useState<string[]>([]);
+  const [imagenPortada, setImagenPortada] = useState<string | null>(null);
   const [promociones, setPromociones] = useState<Array<{ id?: number; cantidad_tickets: number; precio: number; descripcion?: string }>>([]);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoEditando, setPromoEditando] = useState<number | null>(null);
@@ -29,6 +30,9 @@ export default function EditarSorteo() {
   const [promoDescripcion, setPromoDescripcion] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const initialImagenPortadaRef = useRef<string | null>(null);
+  const imagenesDirtyRef = useRef(false);
+  const promocionesDirtyRef = useRef(false);
 
   useEffect(() => {
     loadSorteo();
@@ -61,7 +65,12 @@ export default function EditarSorteo() {
       } else {
         setImagenes([]);
       }
-      
+      imagenesDirtyRef.current = false;
+
+      const portada = sorteo.imagen_portada || null;
+      setImagenPortada(portada);
+      initialImagenPortadaRef.current = portada;
+
       if (sorteo.productos && sorteo.productos.length > 0) {
         setProductos(sorteo.productos.map((p: any) => ({
           nombre: p.nombre,
@@ -70,18 +79,21 @@ export default function EditarSorteo() {
         })));
       }
 
-      // Cargar promociones
+      // Cargar promociones (el backend puede devolver precio_total en lugar de precio)
       try {
         const promocionesResponse = await api.get(`/promociones/sorteo/${id}`);
         const promos = promocionesResponse.data || [];
-        // Asegurar que precio y cantidad_tickets sean números
-        const promosFormateadas = promos.map((p: any) => ({
-          ...p,
-          precio: parseFloat(p.precio) || 0,
-          cantidad_tickets: parseInt(p.cantidad_tickets) || 1,
-        }));
+        const promosFormateadas = promos.map((p: any) => {
+          const precioNum = parseFloat(p.precio) || parseFloat(p.precio_total) || 0;
+          return {
+            ...p,
+            precio: precioNum,
+            cantidad_tickets: parseInt(p.cantidad_tickets) || 1,
+          };
+        });
         console.log('🔍 Promociones cargadas:', promosFormateadas);
         setPromociones(promosFormateadas);
+        promocionesDirtyRef.current = false;
       } catch (error) {
         console.error('Error al cargar promociones:', error);
         setPromociones([]);
@@ -111,35 +123,26 @@ export default function EditarSorteo() {
   };
 
   const pickImage = async () => {
-    if (imagenes.length >= 5) {
-      Alert.alert('Límite alcanzado', 'Solo puedes agregar hasta 5 imágenes');
-      return;
-    }
-
-    // Solicitar permisos
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permisos necesarios', 'Necesitamos acceso a tu galería para seleccionar imágenes');
       return;
     }
-
-    // Abrir selector de imágenes
+    // Sin límite de cantidad ni de recorte, igual que la imagen de portada
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5, // Reducir calidad para reducir tamaño (0.5 = 50%)
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
       base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
+      imagenesDirtyRef.current = true;
       const asset = result.assets[0];
-      // Usar base64 si está disponible, sino usar URI
       if (asset.base64) {
         const base64Image = `data:image/jpeg;base64,${asset.base64}`;
         setImagenes([...imagenes, base64Image]);
       } else {
-        // Si no hay base64, convertir la imagen a base64
         try {
           const base64 = await FileSystem.readAsStringAsync(asset.uri, {
             encoding: FileSystem.EncodingType.Base64,
@@ -155,7 +158,42 @@ export default function EditarSorteo() {
   };
 
   const removeImage = (index: number) => {
+    imagenesDirtyRef.current = true;
     setImagenes(imagenes.filter((_, i) => i !== index));
+  };
+
+  const pickImagenPortada = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permisos necesarios', 'Necesitamos acceso a tu galería para la imagen de portada');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      let base64Image: string;
+      if (asset.base64) {
+        base64Image = `data:image/jpeg;base64,${asset.base64}`;
+      } else {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+          base64Image = `data:image/jpeg;base64,${base64}`;
+        } catch (e) {
+          Alert.alert('Error', 'No se pudo procesar la imagen');
+          return;
+        }
+      }
+      setImagenPortada(base64Image);
+    }
+  };
+
+  const removeImagenPortada = () => {
+    setImagenPortada(null);
   };
 
   const handleAddPromocion = () => {
@@ -191,8 +229,8 @@ export default function EditarSorteo() {
       return;
     }
 
+    promocionesDirtyRef.current = true;
     if (promoEditando !== null) {
-      // Editar promoción existente
       const updated = [...promociones];
       updated[promoEditando] = {
         ...updated[promoEditando],
@@ -202,7 +240,6 @@ export default function EditarSorteo() {
       };
       setPromociones(updated);
     } else {
-      // Agregar nueva promoción
       setPromociones([...promociones, {
         cantidad_tickets: cantidad,
         precio: precio,
@@ -227,9 +264,9 @@ export default function EditarSorteo() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
+            promocionesDirtyRef.current = true;
             const promo = promociones[index];
             if (promo.id) {
-              // Si tiene ID, eliminar del backend
               try {
                 await api.delete(`/promociones/${promo.id}`);
               } catch (error) {
@@ -261,51 +298,67 @@ export default function EditarSorteo() {
 
     setSaving(true);
     try {
-      // Actualizar sorteo
-      await api.put(`/sorteos/${id}`, {
+      // Siempre enviar imagen_portada e imagenes para que el servidor no las borre
+      const payloadSorteo: Record<string, unknown> = {
         titulo,
         descripcion,
         fecha_sorteo: fechaCompleta,
         estado,
         link: link || null,
-        imagenes: imagenes, // Incluir imágenes actualizadas
+        imagen_portada: imagenPortada ?? null,
+        imagenes: imagenes,
         productos: productos.map((p, i) => ({
           nombre: p.nombre,
           descripcion: p.descripcion,
           posicion_premio: i + 1,
         })),
-      });
+      };
 
-      // Actualizar promociones
-      // Primero obtener promociones existentes del backend
-      const promocionesExistentes = await api.get(`/promociones/sorteo/${id}`);
-      const idsExistentes = promocionesExistentes.data.map((p: any) => p.id);
-
-      // Eliminar promociones que ya no están en la lista
-      for (const promoExistente of promocionesExistentes.data) {
-        if (!promociones.find(p => p.id === promoExistente.id)) {
-          await api.delete(`/promociones/${promoExistente.id}`);
-        }
+      try {
+        await api.put(`/sorteos/${id}`, payloadSorteo);
+      } catch (err: any) {
+        console.error('❌ Falló PUT /sorteos:', err.response?.status, err.response?.data);
+        throw err;
       }
 
-      // Crear o actualizar promociones
-      for (const promo of promociones) {
-        if (promo.id) {
-          // Actualizar promoción existente
-          await api.put(`/promociones/${promo.id}`, {
-            cantidad_tickets: promo.cantidad_tickets,
-            precio: promo.precio,
-            descripcion: promo.descripcion,
-            activa: true,
-          });
-        } else {
-          // Crear nueva promoción
-          await api.post('/promociones', {
-            sorteo_id: parseInt(id as string),
-            cantidad_tickets: promo.cantidad_tickets,
-            precio: promo.precio,
-            descripcion: promo.descripcion,
-          });
+      // Solo tocar promociones en el backend si el usuario las modificó (evita 500 del servidor)
+      if (promocionesDirtyRef.current) {
+        try {
+          const promocionesExistentes = await api.get(`/promociones/sorteo/${id}`);
+          for (const promoExistente of promocionesExistentes.data) {
+            if (!promociones.find(p => p.id === promoExistente.id)) {
+              await api.delete(`/promociones/${promoExistente.id}`);
+            }
+          }
+          for (const promo of promociones) {
+            const cantidad = parseInt(String(promo.cantidad_tickets)) || 1;
+            const precioNum = Number(promo.precio) || 0;
+            if (promo.id) {
+              // Formato que suele esperar el backend (precio_total string, activa, descuento)
+              const body: Record<string, unknown> = {
+                cantidad_tickets: cantidad,
+                precio: precioNum,
+                precio_total: precioNum.toFixed(2),
+                descripcion: promo.descripcion ?? '',
+                activa: 1,
+                descuento: '0.00',
+              };
+              await api.put(`/promociones/${promo.id}`, body);
+            } else {
+              await api.post('/promociones', {
+                sorteo_id: parseInt(id as string),
+                cantidad_tickets: cantidad,
+                precio: precioNum,
+                precio_total: precioNum.toFixed(2),
+                descripcion: promo.descripcion ?? '',
+              });
+            }
+          }
+        } catch (err: any) {
+          const data = err.response?.data;
+          const detail = typeof data === 'object' ? (data?.error ?? data?.message ?? JSON.stringify(data)) : String(data);
+          console.error('❌ Falló actualizar promociones:', err.response?.status, detail);
+          throw new Error(err.response?.status === 500 ? `Error al actualizar promoción. ${detail || 'Revisa los datos (cantidad y precio).'}` : (detail || err.message));
         }
       }
 
@@ -314,7 +367,20 @@ export default function EditarSorteo() {
       ]);
     } catch (error: any) {
       console.error('Error al actualizar:', error);
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el sorteo');
+      const url = error.config?.url || error.config?.baseURL || '';
+      const data = error.response?.data;
+      const status = error.response?.status;
+      let msg = 'No se pudo actualizar el sorteo.';
+      if (typeof data === 'object' && (data?.error ?? data?.message)) {
+        msg = String(data?.error ?? data?.message);
+      } else if (data && typeof data === 'string') {
+        msg = data;
+      } else if (error.message) {
+        msg = error.message;
+      }
+      if (status) msg = `[${status}] ${msg}`;
+      if (__DEV__ && url) console.warn('Request que falló:', error.config?.method, url, data);
+      Alert.alert('Error al actualizar', msg);
     } finally {
       setSaving(false);
     }
@@ -430,10 +496,34 @@ export default function EditarSorteo() {
           )}
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
+            Foto principal del sorteo
+          </Text>
+          <Text variant="bodySmall" style={styles.sectionSubtitle}>
+            Imagen que se muestra en la lista de sorteos
+          </Text>
+          {imagenPortada ? (
+            <View style={styles.portadaPreviewWrapper}>
+              <Image source={{ uri: imagenPortada }} style={styles.portadaPreview} resizeMode="cover" />
+              <View style={styles.portadaActions}>
+                <Button mode="outlined" onPress={pickImagenPortada} style={styles.portadaButton}>
+                  Cambiar
+                </Button>
+                <Button mode="outlined" textColor="#c62828" onPress={removeImagenPortada} style={styles.portadaButton}>
+                  Quitar
+                </Button>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.portadaPlaceholder} onPress={pickImagenPortada}>
+              <Text style={styles.portadaPlaceholderText}>+ Agregar foto principal</Text>
+            </TouchableOpacity>
+          )}
+
+          <Text variant="titleMedium" style={styles.sectionTitle}>
             Fotos del Premio
           </Text>
           <Text variant="bodySmall" style={styles.sectionSubtitle}>
-            Puedes agregar hasta 5 imágenes del premio
+            Agrega las imágenes que quieras del premio (sin límite)
           </Text>
           
           <View style={styles.imagesContainer}>
@@ -775,6 +865,38 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 12,
     fontSize: 12,
+  },
+  portadaPreviewWrapper: {
+    marginBottom: 16,
+  },
+  portadaPreview: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  portadaActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  portadaButton: {
+    flex: 1,
+  },
+  portadaPlaceholder: {
+    height: 120,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#7b2cbf',
+    borderStyle: 'dashed',
+    backgroundColor: '#f3e8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  portadaPlaceholderText: {
+    color: '#7b2cbf',
+    fontSize: 16,
+    fontWeight: '600',
   },
   promoCard: {
     marginBottom: 12,

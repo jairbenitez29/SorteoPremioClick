@@ -609,14 +609,6 @@ function createSorteoCard(sorteo) {
                     </div>
                 </div>
                 <div class="sorteo-stats-compact">
-                    ${currentUser && currentUser.rol === 'admin' ? `
-                    <div class="stat-item">
-                        <i class="fas fa-ticket-alt"></i>
-                        <span class="stat-value">${sorteo.estadisticas?.tickets_vendidos || 0}</span>
-                        <span class="stat-text">tickets</span>
-                    </div>
-                    <div class="stat-divider"></div>
-                    ` : ''}
                     <div class="stat-item">
                         <i class="fas fa-trophy"></i>
                         <span class="stat-value">${sorteo.productos?.length || 0}</span>

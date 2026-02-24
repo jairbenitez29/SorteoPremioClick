@@ -183,24 +183,14 @@ export default function SorteoDetailScreen() {
 
           <View style={styles.statsContainer}>
             {isAdmin && (
-              <>
-                <View style={styles.statItem}>
-                  <Text variant="headlineSmall" style={styles.statNumber}>
-                    {sorteo.estadisticas?.tickets_vendidos || 0}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>
-                    Tickets Vendidos
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text variant="headlineSmall" style={styles.statNumber}>
-                    {sorteo.estadisticas?.tickets_disponibles || 0}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>
-                    Disponibles
-                  </Text>
-                </View>
-              </>
+              <View style={styles.statItem}>
+                <Text variant="headlineSmall" style={styles.statNumber}>
+                  {sorteo.estadisticas?.tickets_disponibles || 0}
+                </Text>
+                <Text variant="bodySmall" style={styles.statLabel}>
+                  Disponibles
+                </Text>
+              </View>
             )}
             <View style={styles.statItem}>
               <Text variant="headlineSmall" style={styles.statNumber}>

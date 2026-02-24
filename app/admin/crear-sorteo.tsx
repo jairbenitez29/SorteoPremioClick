@@ -18,6 +18,8 @@ export default function CrearSorteo() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [imagenPortada, setImagenPortada] = useState<string | null>(null);
+  const [showPortadaConfirmModal, setShowPortadaConfirmModal] = useState(false);
+  const [tempPortadaBase64, setTempPortadaBase64] = useState<string | null>(null);
   const [productos, setProductos] = useState([{ nombre: '', descripcion: '', posicion_premio: 1, imagenes: [] as string[] }]);
   const [promociones, setPromociones] = useState<Array<{ cantidad_tickets: number; precio: number; descripcion?: string }>>([]);
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -43,26 +45,17 @@ export default function CrearSorteo() {
   };
 
   const pickImage = async (productoIndex: number) => {
-    const producto = productos[productoIndex];
-    if (producto.imagenes.length >= 5) {
-      Alert.alert('Límite alcanzado', 'Solo puedes agregar hasta 5 imágenes por premio');
-      return;
-    }
-
-    // Solicitar permisos
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permisos necesarios', 'Necesitamos acceso a tu galería para seleccionar imágenes');
       return;
     }
-
-    // Abrir selector de imágenes
+    // Sin límite de cantidad ni de recorte, igual que la imagen de portada
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5, // Reducir calidad para reducir tamaño (0.5 = 50%)
-      base64: true, // Habilitar base64
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -112,37 +105,41 @@ export default function CrearSorteo() {
       return;
     }
 
-    // Abrir selector de imágenes
+    // Sin recorte forzado ni límite de aspecto: se usa la imagen completa
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9], // Formato más ancho para portada
-      quality: 0.7,
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
       base64: true,
     });
-
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      // Usar base64 si está disponible, sino usar URI
       let base64Image: string;
       if (asset.base64) {
         base64Image = `data:image/jpeg;base64,${asset.base64}`;
       } else {
-        // Si no hay base64, convertir la imagen a base64
         try {
-          const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-            encoding: 'base64' as any,
-          });
+          const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' as any });
           base64Image = `data:image/jpeg;base64,${base64}`;
         } catch (error) {
-          console.error('Error al convertir imagen a base64:', error);
           Alert.alert('Error', 'No se pudo procesar la imagen');
           return;
         }
       }
-      
-      setImagenPortada(base64Image);
+      setTempPortadaBase64(base64Image);
+      setShowPortadaConfirmModal(true);
     }
+  };
+
+  const confirmPortada = () => {
+    if (tempPortadaBase64) setImagenPortada(tempPortadaBase64);
+    setTempPortadaBase64(null);
+    setShowPortadaConfirmModal(false);
+  };
+
+  const cancelPortada = () => {
+    setTempPortadaBase64(null);
+    setShowPortadaConfirmModal(false);
   };
 
   const removeImagenPortada = () => {
@@ -623,6 +620,34 @@ export default function CrearSorteo() {
             </Card.Content>
           </Card>
         </Modal>
+
+        <Modal
+          visible={showPortadaConfirmModal}
+          onDismiss={cancelPortada}
+          contentContainerStyle={styles.modalContent}
+        >
+          <Card>
+            <Card.Content>
+              <Text variant="titleLarge" style={styles.modalTitle}>
+                Confirmar foto principal
+              </Text>
+              {tempPortadaBase64 ? (
+                <Image source={{ uri: tempPortadaBase64 }} style={styles.portadaConfirmPreview} resizeMode="contain" />
+              ) : null}
+              <Text variant="bodyMedium" style={{ marginVertical: 12 }}>
+                ¿Usar esta imagen como foto principal del sorteo?
+              </Text>
+              <View style={styles.modalActions}>
+                <Button mode="outlined" onPress={cancelPortada} style={styles.modalButton}>
+                  Cancelar
+                </Button>
+                <Button mode="contained" onPress={confirmPortada} style={styles.modalButton} buttonColor="#7b2cbf">
+                  OK
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        </Modal>
       </Portal>
     </ScrollView>
   );
@@ -797,6 +822,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     resizeMode: 'cover',
+  },
+  portadaConfirmPreview: {
+    width: '100%',
+    maxHeight: 280,
+    height: 200,
+    borderRadius: 12,
   },
   addPortadaButton: {
     width: '100%',

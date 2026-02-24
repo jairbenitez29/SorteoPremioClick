@@ -236,7 +236,6 @@ export default function AdminTickets() {
               return sorteosConTickets.map((grupo) => {
                 const totalTickets = grupo.tickets.length;
                 const disponibles = grupo.tickets.filter((t: any) => t.estado === 'disponible').length;
-                const vendidos = grupo.tickets.filter((t: any) => t.estado === 'vendido').length;
 
                 return (
                   <Card key={grupo.sorteoId} style={styles.sorteoCard}>
@@ -271,14 +270,6 @@ export default function AdminTickets() {
                           </Text>
                           <Text variant="bodySmall" style={styles.statLabel}>
                             Disponibles
-                          </Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text variant="headlineSmall" style={[styles.statNumber, styles.statSold]}>
-                            {vendidos}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.statLabel}>
-                            Vendidos
                           </Text>
                         </View>
                       </View>

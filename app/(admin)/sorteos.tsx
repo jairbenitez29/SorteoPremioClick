@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Alert, Image } from 'react-native';
 import { Card, Text, Button, ActivityIndicator, FAB, IconButton, Chip } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../services/api';
@@ -148,6 +148,9 @@ export default function AdminSorteos() {
                 style={styles.cardGradient}
               >
                 <Card.Content style={styles.cardContent}>
+                  {sorteo.imagen_portada ? (
+                    <Image source={{ uri: sorteo.imagen_portada }} style={styles.cardPortada} resizeMode="cover" />
+                  ) : null}
                   <View style={styles.cardHeader}>
                     <Text variant="titleLarge" style={styles.cardTitle}>
                       {sorteo.titulo}
@@ -180,10 +183,6 @@ export default function AdminSorteos() {
                     </View>
                   </View>
                   <View style={styles.cardStats}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statIcon}>🎫</Text>
-                      <Text style={styles.statText}>{sorteo.tickets_vendidos || 0} vendidos</Text>
-                    </View>
                     <View style={styles.statItem}>
                       <Text style={styles.statIcon}>🎁</Text>
                       <Text style={styles.statText}>{sorteo.total_productos || 0} premios</Text>
@@ -272,6 +271,13 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 16,
+  },
+  cardPortada: {
+    width: '100%',
+    height: 160,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 12,
   },
   cardHeader: {
     flexDirection: 'row',

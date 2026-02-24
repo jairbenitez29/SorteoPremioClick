@@ -104,19 +104,20 @@ export default function AdminUsuarios() {
             </Card.Content>
             <Card.Actions>
               <Menu
+                key={`menu-${usuario.id}-${menuVisible[usuario.id] ? 'open' : 'closed'}`}
                 visible={menuVisible[usuario.id] || false}
-                onDismiss={() => setMenuVisible({ ...menuVisible, [usuario.id]: false })}
+                onDismiss={() => setMenuVisible((prev) => ({ ...prev, [usuario.id]: false }))}
                 anchor={
                   <IconButton
                     icon="dots-vertical"
-                    onPress={() => setMenuVisible({ ...menuVisible, [usuario.id]: true })}
+                    onPress={() => setMenuVisible((prev) => ({ ...prev, [usuario.id]: true }))}
                   />
                 }
               >
                 <Menu.Item
                   onPress={() => {
                     handleChangeRole(usuario.id, 'admin');
-                    setMenuVisible({ ...menuVisible, [usuario.id]: false });
+                    setMenuVisible((prev) => ({ ...prev, [usuario.id]: false }));
                   }}
                   title="Hacer Admin"
                   disabled={usuario.rol === 'admin'}
@@ -124,7 +125,7 @@ export default function AdminUsuarios() {
                 <Menu.Item
                   onPress={() => {
                     handleChangeRole(usuario.id, 'usuario');
-                    setMenuVisible({ ...menuVisible, [usuario.id]: false });
+                    setMenuVisible((prev) => ({ ...prev, [usuario.id]: false }));
                   }}
                   title="Quitar Admin"
                   disabled={usuario.rol === 'usuario'}
