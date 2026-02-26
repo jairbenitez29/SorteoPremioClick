@@ -7,6 +7,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { api } from '../../../services/api';
 import { format } from 'date-fns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PRECIO_TICKET_STORAGE_KEY = (sorteoId: string | string[]) => `precio_ticket_${Array.isArray(sorteoId) ? sorteoId[0] : sorteoId}`;
 
 export default function EditarSorteo() {
   const { id } = useLocalSearchParams();
@@ -22,6 +25,7 @@ export default function EditarSorteo() {
   const [productos, setProductos] = useState([{ nombre: '', descripcion: '', posicion_premio: 1 }]);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [imagenPortada, setImagenPortada] = useState<string | null>(null);
+  const [precioUnitario, setPrecioUnitario] = useState('');
   const [promociones, setPromociones] = useState<Array<{ id?: number; cantidad_tickets: number; precio: number; descripcion?: string }>>([]);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoEditando, setPromoEditando] = useState<number | null>(null);
@@ -40,7 +44,8 @@ export default function EditarSorteo() {
 
   const loadSorteo = async () => {
     try {
-      const response = await api.get(`/sorteos/${id}`);
+      // Cache-bust para obtener siempre datos frescos del servidor (precio_ticket, etc.)
+      const response = await api.get(`/sorteos/${id}?_=${Date.now()}`);
       const sorteo = response.data;
       setTitulo(sorteo.titulo);
       setDescripcion(sorteo.descripcion || '');
@@ -70,6 +75,15 @@ export default function EditarSorteo() {
       const portada = sorteo.imagen_portada || null;
       setImagenPortada(portada);
       initialImagenPortadaRef.current = portada;
+
+      // Precio unitario: priorizar valor guardado en este dispositivo (el backend puede no persistirlo)
+      const storageKey = PRECIO_TICKET_STORAGE_KEY(id);
+      const localPrecio = await AsyncStorage.getItem(storageKey);
+      const rawPrecio = (localPrecio != null && localPrecio !== '' && !Number.isNaN(parseFloat(localPrecio)))
+        ? parseFloat(localPrecio)
+        : (sorteo.precio_ticket ?? (sorteo as any).precio_ticket_unitario ?? sorteo.tickets?.[0]?.precio);
+      const precioTicket = rawPrecio != null ? (typeof rawPrecio === 'string' ? parseFloat(rawPrecio) : rawPrecio) : null;
+      setPrecioUnitario(precioTicket != null && !Number.isNaN(precioTicket) ? String(precioTicket) : '');
 
       if (sorteo.productos && sorteo.productos.length > 0) {
         setProductos(sorteo.productos.map((p: any) => ({
@@ -299,12 +313,14 @@ export default function EditarSorteo() {
     setSaving(true);
     try {
       // Siempre enviar imagen_portada e imagenes para que el servidor no las borre
+      const precioTicketNum = precioUnitario ? parseFloat(precioUnitario) : null;
       const payloadSorteo: Record<string, unknown> = {
         titulo,
         descripcion,
         fecha_sorteo: fechaCompleta,
         estado,
         link: link || null,
+        precio_ticket: precioTicketNum,
         imagen_portada: imagenPortada ?? null,
         imagenes: imagenes,
         productos: productos.map((p, i) => ({
@@ -319,6 +335,11 @@ export default function EditarSorteo() {
       } catch (err: any) {
         console.error('❌ Falló PUT /sorteos:', err.response?.status, err.response?.data);
         throw err;
+      }
+
+      // Guardar precio unitario en este dispositivo (el backend puede no persistirlo aún)
+      if (precioUnitario !== '' && !Number.isNaN(parseFloat(precioUnitario))) {
+        await AsyncStorage.setItem(PRECIO_TICKET_STORAGE_KEY(id), precioUnitario);
       }
 
       // Solo tocar promociones en el backend si el usuario las modificó (evita 500 del servidor)
@@ -418,6 +439,17 @@ export default function EditarSorteo() {
             style={styles.input}
             textColor="#000"
             keyboardType="url"
+          />
+
+          <TextInput
+            label="Precio unitario del ticket (CLP) *"
+            value={precioUnitario}
+            onChangeText={setPrecioUnitario}
+            mode="outlined"
+            placeholder="Ej: 3000"
+            style={styles.input}
+            textColor="#000"
+            keyboardType="numeric"
           />
 
           <View style={styles.dateTimeContainer}>

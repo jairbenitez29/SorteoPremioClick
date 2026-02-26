@@ -3,8 +3,11 @@ import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-nat
 import { Card, Text, Button, ActivityIndicator, Divider } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../services/api';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+
+const PRECIO_TICKET_STORAGE_KEY = (sorteoId: string | string[]) => `precio_ticket_${Array.isArray(sorteoId) ? sorteoId[0] : sorteoId}`;
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -13,6 +16,7 @@ export default function ComprarTicketScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [sorteo, setSorteo] = useState<any>(null);
+  const [localPrecioTicket, setLocalPrecioTicket] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [cantidad, setCantidad] = useState<number>(1);
@@ -52,18 +56,18 @@ export default function ComprarTicketScreen() {
       const response = await api.get(`/sorteos/${id}`);
       const sorteoData = response.data;
       setSorteo(sorteoData);
-      
-      // Log para debugging del precio
-      console.log('🔍 Sorteo cargado:', {
-        id: sorteoData.id,
-        titulo: sorteoData.titulo,
-        precio_ticket: sorteoData.precio_ticket,
-        tieneTickets: !!sorteoData.tickets,
-        cantidadTickets: sorteoData.tickets?.length || 0
-      });
-      
-      if (!sorteoData.precio_ticket || sorteoData.precio_ticket === 0) {
-        console.warn('⚠️ ADVERTENCIA: El sorteo no tiene precio_ticket configurado');
+
+      const storageKey = PRECIO_TICKET_STORAGE_KEY(id);
+      const stored = await AsyncStorage.getItem(storageKey);
+      if (stored != null && stored !== '') {
+        const num = parseFloat(stored);
+        if (!Number.isNaN(num) && num > 0) {
+          setLocalPrecioTicket(num);
+        } else {
+          setLocalPrecioTicket(null);
+        }
+      } else {
+        setLocalPrecioTicket(null);
       }
     } catch (error) {
       console.error('Error al cargar sorteo:', error);
@@ -329,50 +333,19 @@ export default function ComprarTicketScreen() {
     );
   }
 
-  // Obtener precio del ticket desde sorteo.precio_ticket (enviado por el backend)
-  console.log('🔍 ========== CALCULANDO PRECIO UNITARIO ==========');
-  console.log('🔍 sorteo.precio_ticket (raw):', sorteo.precio_ticket);
-  console.log('🔍 Tipo de precio_ticket:', typeof sorteo.precio_ticket);
-  console.log('🔍 sorteo.tickets:', sorteo.tickets);
-  
+  // Precio unitario: primero API (cuando el servidor guarda precio_ticket), luego respaldo local, luego tickets
   let precioUnitario = 0;
-  
-  // Intentar obtener el precio de precio_ticket primero
   if (sorteo.precio_ticket !== undefined && sorteo.precio_ticket !== null) {
-    const precioParseado = parseFloat(sorteo.precio_ticket);
-    if (!isNaN(precioParseado) && precioParseado > 0) {
-      precioUnitario = precioParseado;
-      console.log('✅ Precio obtenido de precio_ticket:', precioUnitario);
-    } else {
-      console.warn('⚠️ precio_ticket no es un número válido:', sorteo.precio_ticket);
-    }
+    const n = parseFloat(sorteo.precio_ticket);
+    if (!Number.isNaN(n) && n > 0) precioUnitario = n;
   }
-  
-  // Si no se obtuvo precio, intentar desde tickets
-  if (precioUnitario === 0 && sorteo.tickets && Array.isArray(sorteo.tickets) && sorteo.tickets.length > 0) {
-    const precioTicket = parseFloat(sorteo.tickets[0].precio);
-    if (!isNaN(precioTicket) && precioTicket > 0) {
-      precioUnitario = precioTicket;
-      console.log('✅ Precio obtenido de tickets[0].precio:', precioUnitario);
-    }
+  if (precioUnitario === 0 && localPrecioTicket != null && localPrecioTicket > 0) {
+    precioUnitario = localPrecioTicket;
   }
-  
-  console.log('🔍 Precio unitario final:', precioUnitario);
-  
-  // Si el precio es 0, mostrar advertencia en consola
-  if (precioUnitario === 0) {
-    console.error('❌ ERROR: Precio del ticket es 0. Datos del sorteo:', {
-      sorteoId: id,
-      precio_ticket: sorteo.precio_ticket,
-      tipo_precio_ticket: typeof sorteo.precio_ticket,
-      tickets: sorteo.tickets,
-      tieneTickets: !!sorteo.tickets,
-      cantidadTickets: sorteo.tickets?.length || 0,
-      sorteoCompleto: JSON.stringify(sorteo, null, 2)
-    });
+  if (precioUnitario === 0 && sorteo.tickets?.length > 0) {
+    const n = parseFloat(sorteo.tickets[0].precio);
+    if (!Number.isNaN(n) && n > 0) precioUnitario = n;
   }
-  
-  console.log('🔍 ========== FIN CÁLCULO PRECIO ==========');
 
   const precioTotal = precioUnitario * cantidad;
   const precioPromocion = promocionSeleccionada && (promocionSeleccionada.precio != null || promocionSeleccionada.precio_total != null)

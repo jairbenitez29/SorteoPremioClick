@@ -1,6 +1,19 @@
 # Notas para el backend
 
-## 1. Límite de 1000 tickets por mes (quitar restricción)
+## 1. Precio unitario del ticket (precio_ticket)
+
+La app envía **`precio_ticket`** al actualizar un sorteo (`PUT /api/sorteos/:id`) y espera recibirlo al cargar un sorteo (`GET /api/sorteos/:id`).
+
+**Qué hacer:**
+1. En la tabla **sorteos** (o equivalente), tener una columna **`precio_ticket`** (número, ej. 3000 para 3000 CLP).
+2. En la ruta **PUT** que actualiza un sorteo, leer `precio_ticket` del body y guardarlo en la base de datos.
+3. En la ruta **GET** que devuelve un sorteo por id, incluir **`precio_ticket`** en la respuesta (el valor guardado en la tabla).
+
+Si no se guarda o no se devuelve `precio_ticket`, en otros teléfonos y en la web seguirá saliendo el precio viejo. **Guía con SQL y código listo para el servidor:** `BACKEND_PRECIO_TICKET.md`.
+
+---
+
+## 2. Límite de 1000 tickets por mes (quitar restricción)
 
 El mensaje *"Solo se pueden crear hasta 1000 tickets por mes"* lo devuelve el **servidor** en la ruta de generación de tickets (por ejemplo `POST /api/tickets/generar/:sorteoId`).
 
