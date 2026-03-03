@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle del Sorteo - PremioClick</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .detalle-wrap { background: #f5f5f5; min-height: 100vh; padding-bottom: 48px; }
+        .detalle-container { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+        .detalle-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 24px; }
+        .detalle-card-body { padding: 24px; }
+        .detalle-header { margin-bottom: 20px; }
+        .detalle-title { font-size: 1.75rem; color: #212121; margin-bottom: 10px; font-weight: 700; line-height: 1.3; }
+        .detalle-badge { display: inline-block; padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+        .detalle-badge.activo { background: #e8f5e9; color: #2e7d32; }
+        .detalle-badge.finalizado { background: #e3f2fd; color: #1565c0; }
+        .detalle-imagen { width: 100%; max-height: 380px; object-fit: cover; display: block; }
+        .detalle-meta { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; color: #616161; font-size: 0.95rem; }
+        .detalle-meta span { display: inline-flex; align-items: center; gap: 6px; }
+        .detalle-descripcion { color: #424242; line-height: 1.65; margin: 16px 0; white-space: pre-wrap; }
+        .detalle-section-title { font-size: 1.15rem; font-weight: 700; color: #212121; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #7b2cbf; }
+        .premio-item { background: #fafafa; padding: 14px 16px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #7b2cbf; }
+        .premio-nombre { font-weight: 600; color: #212121; margin-bottom: 4px; }
+        .premio-desc { color: #616161; font-size: 0.9rem; }
+        .ganadores-section { margin-top: 8px; padding: 20px; background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-radius: 12px; border: 1px solid #e0e0e0; }
+        .ganadores-title { font-size: 1.25rem; font-weight: 700; color: #212121; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .ganador-card { background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .ganador-card:last-child { margin-bottom: 0; }
+        .ganador-premio { font-weight: 600; color: #7b2cbf; margin-bottom: 4px; font-size: 1rem; }
+        .ganador-ticket { color: #616161; font-size: 0.9rem; }
+        .ganador-nombre { margin-top: 8px; color: #212121; font-weight: 500; }
+        .ganador-email { margin-top: 2px; color: #616161; font-size: 0.85rem; }
+        .detalle-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+        .btn-volver { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: #5a5a5a; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
+        .btn-volver:hover { background: #424242; color: white; }
+        .btn-comprar { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: #7b2cbf; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; font-size: 1rem; }
+        .btn-comprar:hover { background: #6a1b9a; color: white; }
+        .loading { text-align: center; padding: 64px 24px; color: #666; }
+        .loading i { font-size: 2rem; margin-bottom: 16px; display: block; }
+        .error-msg { color: #c62828; padding: 24px; text-align: center; }
+        .detalle-link { margin-top: 12px; }
+        .detalle-link a { color: #7b2cbf; text-decoration: none; font-weight: 500; }
+        .detalle-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="index.html" class="logo" style="text-decoration: none; cursor: pointer;">
+                <img src="logo.png" alt="PremioClick" class="logo-img">
+                <span>PremioClick</span>
+            </a>
+            <div class="header-actions">
+                <button class="login-btn" id="loginBtn" style="display: none;">
+                    <i class="fas fa-user"></i>
+                    <span>Iniciar Sesión</span>
+                </button>
+                <a href="https://www.mediafire.com/file/b7dtke9mvy9c2mt/application-c097c503-fd86-4d11-81da-a7cd3cfa893b.apk/file" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem;">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Obtener app</span>
+                </a>
+            </div>
+        </div>
+        <div class="header-bar-app" style="background: #5a189a; padding: 10px 0; text-align: center;">
+            <a href="index.html" style="color: rgba(255,255,255,0.9); text-decoration: none; font-size: 0.9rem;"><i class="fas fa-arrow-left"></i> Volver a sorteos</a>
+        </div>
+    </header>
+
+    <div class="detalle-wrap">
+        <div class="detalle-container">
+            <div id="contenido">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando sorteo...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 PremioClick. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            const isProduction = window.location.hostname.includes('premioclick.cl') ||
+                window.location.hostname.includes('render.com');
+            const API_URL = isProduction
+                ? window.location.origin + '/api'
+                : (window.location.origin.replace(/:\d+$/, '') + ':3001/api');
+
+            function esc(s) {
+                if (s == null) return '';
+                var div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
+
+            function parseJson(val) {
+                if (Array.isArray(val)) return val;
+                if (typeof val === 'string') {
+                    try { return JSON.parse(val); } catch (e) { return []; }
+                }
+                return [];
+            }
+
+            function formatearFecha(fechaStr) {
+                if (!fechaStr) return '';
+                var d = new Date(fechaStr);
+                return d.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            async function cargarSorteo() {
+                var params = new URLSearchParams(window.location.search);
+                var id = params.get('id');
+                var contenido = document.getElementById('contenido');
+
+                if (!id) {
+                    contenido.innerHTML = '<p class="error-msg">No se especificó el sorteo.</p><div class="detalle-actions"><a href="index.html" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a></div>';
+                    return;
+                }
+
+                try {
+                    var res = await fetch(API_URL + '/sorteos/' + id);
+                    if (!res.ok) {
+                        contenido.innerHTML = '<p class="error-msg">No se pudo cargar el sorteo.</p><div class="detalle-actions"><a href="index.html" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a></div>';
+                        return;
+                    }
+                    var sorteo = await res.json();
+
+                    var titulo = esc(sorteo.titulo || 'Sorteo');
+                    var descripcion = esc(sorteo.descripcion || '');
+                    var estado = sorteo.estado === 'activo' ? 'activo' : 'finalizado';
+                    var estadoTexto = sorteo.estado === 'activo' ? 'Activo' : 'Finalizado';
+
+                    var html = '<div class="detalle-card">';
+                    if (sorteo.imagen_portada) {
+                        html += '<img src="' + esc(sorteo.imagen_portada) + '" alt="Portada" class="detalle-imagen" onerror="this.style.display=\'none\'">';
+                    }
+                    html += '<div class="detalle-card-body">';
+                    html += '<div class="detalle-header">';
+                    html += '<h1 class="detalle-title">' + titulo + '</h1>';
+                    html += '<span class="detalle-badge ' + estado + '">' + estadoTexto + '</span>';
+                    html += '</div>';
+
+                    html += '<div class="detalle-meta">';
+                    html += '<span><i class="fas fa-calendar-alt"></i> ' + formatearFecha(sorteo.fecha_sorteo) + '</span>';
+                    var productos = parseJson(sorteo.productos);
+                    html += '<span><i class="fas fa-gift"></i> ' + (productos.length || 0) + ' premio(s)</span>';
+                    if (sorteo.estadisticas) {
+                        var disp = sorteo.estadisticas.tickets_disponibles;
+                        if (disp != null) html += '<span><i class="fas fa-ticket-alt"></i> ' + disp + ' tickets disponibles</span>';
+                    }
+                    html += '</div>';
+
+                    if (descripcion) html += '<p class="detalle-descripcion">' + descripcion + '</p>';
+                    if (sorteo.link) {
+                        html += '<div class="detalle-link"><a href="' + esc(sorteo.link) + '" target="_blank" rel="noopener">Ver más información</a></div>';
+                    }
+
+                    if (productos && productos.length > 0) {
+                        html += '<h2 class="detalle-section-title"><i class="fas fa-gift"></i> Premios</h2>';
+                        productos.forEach(function(p) {
+                            html += '<div class="premio-item">';
+                            html += '<div class="premio-nombre">' + esc(p.nombre) + '</div>';
+                            if (p.descripcion) html += '<div class="premio-desc">' + esc(p.descripcion) + '</div>';
+                            html += '</div>';
+                        });
+                    }
+
+                    if (sorteo.estado === 'finalizado') {
+                        html += '<h2 class="detalle-section-title"><i class="fas fa-trophy"></i> Ganadores</h2>';
+                        html += '<section class="ganadores-section">';
+                        if (sorteo.ganadores && sorteo.ganadores.length > 0) {
+                            sorteo.ganadores.forEach(function(g) {
+                                html += '<div class="ganador-card">';
+                                html += '<div class="ganador-premio">' + esc(g.posicion_premio) + '° Premio: ' + esc(g.producto_nombre || '') + '</div>';
+                                html += '<div class="ganador-ticket">Ticket: ' + esc(g.numero_ticket || '') + '</div>';
+                                if (g.ganador_nombre) html += '<div class="ganador-nombre">Ganador: ' + esc(g.ganador_nombre) + '</div>';
+                                if (g.ganador_email) html += '<div class="ganador-email">' + esc(g.ganador_email) + '</div>';
+                                html += '</div>';
+                            });
+                        } else {
+                            html += '<p style="color:#616161; margin:0;">Aún no hay ganadores publicados para este sorteo.</p>';
+                        }
+                        html += '</section>';
+                    }
+
+                    html += '<div class="detalle-actions">';
+                    html += '<a href="index.html" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a>';
+                    if (sorteo.estado === 'activo') {
+                        html += '<a href="comprar-ticket.html?id=' + esc(id) + '" class="btn-comprar"><i class="fas fa-shopping-cart"></i> Comprar Ticket</a>';
+                    }
+                    html += '</div>';
+                    html += '</div></div>';
+
+                    contenido.innerHTML = html;
+                    document.title = titulo + ' - PremioClick';
+                } catch (err) {
+                    contenido.innerHTML = '<p class="error-msg">Error al cargar el sorteo. Intenta de nuevo.</p><div class="detalle-actions"><a href="index.html" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a></div>';
+                }
+            }
+
+            cargarSorteo();
+        })();
+    </script>
+</body>
+</html>

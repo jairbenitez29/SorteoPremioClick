@@ -8,6 +8,26 @@ import { api } from '../../services/api';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 
 const PRECIO_TICKET_STORAGE_KEY = (sorteoId: string | string[]) => `precio_ticket_${Array.isArray(sorteoId) ? sorteoId[0] : sorteoId}`;
+
+/** Monto total a cobrar en CLP (el mismo que ve el usuario). El backend convierte a USD (ej. montoClp/1000) para PayPal. */
+function getMontoClp(sorteo: any, cantidad: number, promocionSeleccionada: any, localPrecioTicket: number | null): number {
+  let precioUnitario = 0;
+  if (sorteo.precio_ticket != null && !Number.isNaN(parseFloat(sorteo.precio_ticket)) && parseFloat(sorteo.precio_ticket) > 0) {
+    precioUnitario = parseFloat(sorteo.precio_ticket);
+  } else if (localPrecioTicket != null && localPrecioTicket > 0) {
+    precioUnitario = localPrecioTicket;
+  } else if (sorteo.tickets?.length > 0) {
+    const n = parseFloat(sorteo.tickets[0].precio);
+    if (!Number.isNaN(n) && n > 0) precioUnitario = n;
+  }
+  const cantidadTickets = promocionSeleccionada ? (promocionSeleccionada.cantidad_tickets || cantidad) : cantidad;
+  const precioTotal = precioUnitario * cantidadTickets;
+  const precioPromo = promocionSeleccionada && (promocionSeleccionada.precio != null || promocionSeleccionada.precio_total != null)
+    ? parseFloat(promocionSeleccionada.precio || promocionSeleccionada.precio_total) || 0
+    : null;
+  return precioPromo !== null ? precioPromo : precioTotal;
+}
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -114,15 +134,23 @@ export default function ComprarTicketScreen() {
       });
 
       const tickets = reservaResponse.data.tickets;
-      const total = reservaResponse.data.total;
       const ticketIds = tickets.map((t: any) => t.id);
 
-      // Crear pago PayPal
-        let pagoResponse;
+      // Monto a cobrar en CLP: el mismo que ve el usuario. El backend convierte a USD (1000 CLP = 1 USD) para PayPal.
+      const montoClp = getMontoClp(sorteo, cantidad, promocionSeleccionada, localPrecioTicket);
+      if (montoClp <= 0) {
+        Alert.alert('Error', 'El monto a pagar no es válido. Verifica el precio del sorteo.');
+        setProcessing(false);
+        return;
+      }
+
+      // Crear pago PayPal (enviamos monto en CLP; el backend lo convierte a USD)
+      let pagoResponse;
         try {
           pagoResponse = await api.post('/pagos/paypal/create', {
             ticketIds,
-            monto: total,
+            monto: montoClp,
+            montoClp: montoClp,
           });
         } catch (error: any) {
           console.error('Error al crear pago PayPal:', error);

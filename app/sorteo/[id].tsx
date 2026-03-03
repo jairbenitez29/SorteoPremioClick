@@ -40,6 +40,23 @@ export default function SorteoDetailScreen() {
     loadSorteo();
   }, [id]);
 
+  // Si el sorteo está finalizado y no vienen ganadores en el GET, cargarlos desde tombola para que siempre se vean
+  useEffect(() => {
+    if (!sorteo || sorteo.estado !== 'finalizado' || !id) return;
+    if (sorteo.ganadores && sorteo.ganadores.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(`/tombola/ganadores/${id}`);
+        const list = Array.isArray(res.data) ? res.data : [];
+        if (!cancelled) setSorteo((prev: any) => prev ? { ...prev, ganadores: list } : prev);
+      } catch {
+        if (!cancelled) setSorteo((prev: any) => prev ? { ...prev, ganadores: [] } : prev);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, sorteo?.id, sorteo?.estado]);
+
   const loadSorteo = async () => {
     try {
       const response = await api.get(`/sorteos/${id}`);
@@ -255,30 +272,41 @@ export default function SorteoDetailScreen() {
             )}
           </View>
 
-          {estadoReal === 'finalizado' && sorteo.ganadores && (
+          {estadoReal === 'finalizado' && (
             <>
               <Divider style={styles.divider} />
               <View style={styles.ganadoresSection}>
                 <Text variant="titleMedium" style={styles.sectionTitle}>
                   🏆 Ganadores
                 </Text>
-                {sorteo.ganadores.map((ganador: any) => (
-                  <Card key={ganador.id} style={styles.ganadorCard}>
-                    <Card.Content>
-                      <Text variant="titleSmall" style={styles.ganadorPremio}>
-                        {ganador.posicion_premio}° Premio: {ganador.producto_nombre}
-                      </Text>
-                      <Text variant="bodyMedium" style={styles.ganadorTicket}>
-                        Ticket: {ganador.numero_ticket}
-                      </Text>
-                      {ganador.ganador_nombre && (
-                        <Text variant="bodySmall" style={styles.ganadorNombre}>
-                          Ganador: {ganador.ganador_nombre}
+                {sorteo.ganadores && sorteo.ganadores.length > 0 ? (
+                  sorteo.ganadores.map((ganador: any) => (
+                    <Card key={ganador.id} style={styles.ganadorCard}>
+                      <Card.Content>
+                        <Text variant="titleSmall" style={styles.ganadorPremio}>
+                          {ganador.posicion_premio}° Premio: {ganador.producto_nombre}
                         </Text>
-                      )}
-                    </Card.Content>
-                  </Card>
-                ))}
+                        <Text variant="bodyMedium" style={styles.ganadorTicket}>
+                          Ticket: {ganador.numero_ticket}
+                        </Text>
+                        {ganador.ganador_nombre && (
+                          <Text variant="bodySmall" style={styles.ganadorNombre}>
+                            Ganador: {ganador.ganador_nombre}
+                          </Text>
+                        )}
+                        {ganador.ganador_email && (
+                          <Text variant="bodySmall" style={styles.ganadorNombre}>
+                            📧 {ganador.ganador_email}
+                          </Text>
+                        )}
+                      </Card.Content>
+                    </Card>
+                  ))
+                ) : (
+                  <Text variant="bodyMedium" style={styles.noPremios}>
+                    Aún no hay ganadores publicados para este sorteo.
+                  </Text>
+                )}
               </View>
             </>
           )}
