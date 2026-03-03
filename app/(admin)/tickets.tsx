@@ -13,7 +13,6 @@ export default function AdminTickets() {
   const [sorteos, setSorteos] = useState<any[]>([]);
   const [selectedSorteo, setSelectedSorteo] = useState<number | null>(null);
   const [cantidad, setCantidad] = useState('100');
-  const [precio, setPrecio] = useState('1000');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
@@ -143,22 +142,36 @@ export default function AdminTickets() {
       return;
     }
 
-    if (!cantidad || !precio) {
-      Alert.alert('Error', 'Completa todos los campos');
+    if (!cantidad || parseInt(cantidad, 10) < 1) {
+      Alert.alert('Error', 'Indica una cantidad válida de tickets');
+      return;
+    }
+
+    const sorteo = sorteos.find((s: any) => s.id === selectedSorteo);
+    const precioGenerar =
+      sorteo?.precio_ticket != null && !Number.isNaN(parseFloat(String(sorteo.precio_ticket))) && parseFloat(String(sorteo.precio_ticket)) > 0
+        ? parseFloat(String(sorteo.precio_ticket))
+        : sorteo?.tickets?.[0]?.precio != null && !Number.isNaN(parseFloat(String(sorteo.tickets[0].precio)))
+        ? parseFloat(String(sorteo.tickets[0].precio))
+        : null;
+
+    if (precioGenerar == null || precioGenerar <= 0) {
+      Alert.alert(
+        'Precio no definido',
+        'Este sorteo no tiene precio unitario. Configúralo en Editar Sorteo (Precio unitario del ticket) y vuelve a generar.'
+      );
       return;
     }
 
     setGenerating(true);
     try {
       await api.post(`/tickets/generar/${selectedSorteo}`, {
-        cantidad: parseInt(cantidad),
-        precio: parseFloat(precio),
+        cantidad: parseInt(cantidad, 10),
+        precio: precioGenerar,
       });
       Alert.alert('Éxito', `${cantidad} tickets generados correctamente`);
       setCantidad('100');
-      setPrecio('1000');
       setModalVisible(false);
-      // Recargar tickets después de generarlos
       loadTickets();
     } catch (error: any) {
       Alert.alert('Error', 'No se pudieron generar los tickets. Intenta de nuevo.');
@@ -407,15 +420,9 @@ export default function AdminTickets() {
                 textColor="#000"
               />
 
-              <TextInput
-                label="Precio por Ticket"
-                value={precio}
-                onChangeText={setPrecio}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.input}
-                textColor="#000"
-              />
+              <Text variant="bodySmall" style={{ color: '#666', marginBottom: 12 }}>
+                El precio por ticket se usa el del sorteo (configurable en Editar Sorteo).
+              </Text>
 
               <Button
                 mode="contained"
