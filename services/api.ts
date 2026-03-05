@@ -6,7 +6,10 @@ import { Platform } from 'react-native';
 // En desarrollo: usa tu IP local (solo si el backend está corriendo localmente)
 // En producción: usa la URL de tu servidor
 const LOCAL_IP = '192.168.1.48'; // IP local para desarrollo
-const PRODUCTION_API_URL = 'https://premioclick.cl/api'; // URL de producción en cPanel
+// Si defines EXPO_PUBLIC_API_URL en .env, la app usará esa URL (útil si tu API está en otra ruta)
+const PRODUCTION_API_URL =
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
+  'https://premioclick.cl/api'; // URL de producción (cPanel). Debe responder /auth/verify, /sorteos, etc.
 
 // Variable para forzar uso de producción (útil cuando el backend está desplegado)
 // Cambia a false solo si quieres usar el backend local
@@ -14,25 +17,28 @@ const FORCE_PRODUCTION = true; // Usar backend de producción (cPanel)
 
 // Para emulador Android usa 10.0.2.2, para dispositivo físico usa tu IP
 const getApiUrl = () => {
-  // Si se fuerza producción, siempre usar la URL de producción
+  // Si se fuerza producción, usar URL de producción (o la de .env)
   if (FORCE_PRODUCTION) {
-    return PRODUCTION_API_URL;
+    return PRODUCTION_API_URL.replace(/\/$/, ''); // quitar barra final si la tiene
   }
-  
-  // Si hay una variable de entorno o constante de producción, usarla
-  // De lo contrario, usar IP local para desarrollo
+
+  // Si hay variable de entorno de producción, usarla
+  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) {
+    return String(process.env.EXPO_PUBLIC_API_URL).replace(/\/$/, '');
+  }
+
+  // Desarrollo: usar IP local
   if (__DEV__) {
-    // Modo desarrollo: usar IP local
     if (Platform.OS === 'android') {
       return `http://${LOCAL_IP}:3001/api`;
-    } else if (Platform.OS === 'ios') {
+    }
+    if (Platform.OS === 'ios') {
       return `http://${LOCAL_IP}:3001/api`;
     }
     return `http://${LOCAL_IP}:3001/api`;
-  } else {
-    // Modo producción: usar URL del servidor
-    return PRODUCTION_API_URL;
   }
+
+  return PRODUCTION_API_URL.replace(/\/$/, '');
 };
 
 const API_URL = getApiUrl();
@@ -88,6 +94,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error.response?.status === 404) {
+      const url = error.config?.baseURL + (error.config?.url || '');
+      console.warn(
+        '⚠️ API 404 - Ruta no encontrada:',
+        url,
+        '| Comprueba que el backend esté activo en el servidor. Ver SOLUCION_404_API.md'
+      );
+    }
     try {
       if (error.response?.status === 401) {
         try {
