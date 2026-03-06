@@ -515,19 +515,26 @@ async function loadSorteos(filter = 'todos') {
 
     try {
         const response = await fetch(`${API_URL}/sorteos`);
-        const sorteos = await response.json();
-        
+        const data = await response.json();
+
+        // Si la API devuelve error (500, 404, etc.) data puede ser { error, message }, no un array
+        const sorteos = Array.isArray(data) ? data : [];
+        if (!response.ok || !Array.isArray(data)) {
+            console.warn('API sorteos:', response.status, data?.error || data?.message || data);
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error al cargar sorteos</h3>
+                    <p>${data?.error || data?.message || 'Por favor, intenta de nuevo más tarde'}</p>
+                </div>
+            `;
+            return;
+        }
+
         console.log('🔍 ========== SORTEOS RECIBIDOS DEL BACKEND ==========');
         console.log('🔍 Cantidad de sorteos:', sorteos.length);
         if (sorteos.length > 0) {
-            console.log('🔍 Primer sorteo completo:', JSON.stringify(sorteos[0], null, 2));
-            console.log('🔍 Primer sorteo - imagen_portada:', sorteos[0].imagen_portada);
-            console.log('🔍 Primer sorteo - tipo de imagen_portada:', typeof sorteos[0].imagen_portada);
-            console.log('🔍 Primer sorteo - tiene imagen_portada?', !!sorteos[0].imagen_portada);
-            console.log('🔍 Primer sorteo - longitud imagen_portada:', sorteos[0].imagen_portada?.length);
-            if (sorteos[0].imagen_portada) {
-                console.log('🔍 Primer sorteo - preview imagen_portada:', sorteos[0].imagen_portada.substring(0, 100));
-            }
+            console.log('🔍 Primer sorteo - titulo:', sorteos[0].titulo);
         }
         console.log('🔍 ========== FIN SORTEOS RECIBIDOS ==========');
 
@@ -909,7 +916,8 @@ function abrirModalSeleccionarSorteo() {
     
     fetch(`${API_URL}/sorteos`)
         .then(res => res.json())
-        .then(sorteos => {
+        .then(data => {
+            const sorteos = Array.isArray(data) ? data : [];
             const sorteosActivos = sorteos.filter(s => s.estado === 'activo');
             
             if (sorteosActivos.length === 0) {
