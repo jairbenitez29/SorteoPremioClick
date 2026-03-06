@@ -150,7 +150,7 @@ export default function AdminProfile() {
 
   const getWebUrl = async () => {
     // Obtener la URL base del API y construir la URL de la página web
-    const apiBaseUrl = (api && api.defaults && api.defaults.baseURL) || 'https://premioclick.cl/api';
+    const apiBaseUrl = (api && api.defaults && api.defaults.baseURL) || 'https://sorteo-5lh6.vercel.app/api';
     // Remover /api del final si existe
     let webUrl = apiBaseUrl.replace(/\/api$/, '');
     

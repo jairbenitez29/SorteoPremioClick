@@ -74,7 +74,7 @@ async function apiRequest(endpoint, options = {}) {
     }
     
     try {
-        const response = await fetch(`https://premioclick.cl/api${endpoint}`, {
+        const response = await fetch(`https://sorteo-5lh6.vercel.app/api${endpoint}`, {
             ...options,
             headers: headers
         });

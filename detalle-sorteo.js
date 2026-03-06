@@ -1,10 +1,12 @@
+// API en Vercel; la web en premioclick.cl debe apuntar aquí
+const PRODUCTION_API_URL = 'https://sorteo-5lh6.vercel.app/api';
 // Configuración
 const isProduction = window.location.hostname.includes('vercel.app') ||
                      window.location.hostname.includes('railway.app') ||
                      window.location.hostname.includes('render.com') ||
                      window.location.hostname.includes('premioclick.cl');
 const API_URL = isProduction
-    ? window.location.origin + '/api'
+    ? PRODUCTION_API_URL
     : window.location.origin.replace(/:\d+$/, ':3001') + '/api';
 let sorteo = null;
 let imagenes = [];

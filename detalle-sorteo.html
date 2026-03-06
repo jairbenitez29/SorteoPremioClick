@@ -88,10 +88,11 @@
 
     <script>
         (function() {
+            const PRODUCTION_API_URL = 'https://sorteo-5lh6.vercel.app/api';
             const isProduction = window.location.hostname.includes('premioclick.cl') ||
                 window.location.hostname.includes('render.com');
             const API_URL = isProduction
-                ? window.location.origin + '/api'
+                ? PRODUCTION_API_URL
                 : (window.location.origin.replace(/:\d+$/, '') + ':3001/api');
 
             function esc(s) {

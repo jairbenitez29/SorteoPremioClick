@@ -122,13 +122,15 @@ if (document.readyState === 'loading') {
 // ============================================
 
 // Configuración
-// Detectar si estamos en producción (Vercel, Railway, Render, o premioclick.cl) o desarrollo local
+// API en Vercel; la web en premioclick.cl debe apuntar aquí
+const PRODUCTION_API_URL = 'https://sorteo-5lh6.vercel.app/api';
+// Detectar si estamos en producción o desarrollo local
 const isProduction = window.location.hostname.includes('vercel.app') || 
                      window.location.hostname.includes('railway.app') || 
                      window.location.hostname.includes('render.com') ||
                      window.location.hostname.includes('premioclick.cl');
 const API_URL = isProduction 
-    ? window.location.origin + '/api'  // En producción, usar la misma URL sin puerto
+    ? PRODUCTION_API_URL
     : window.location.origin.replace(/:\d+$/, ':3001') + '/api';  // En desarrollo, usar puerto 3001
 let currentFilter = 'todos';
 let currentUser = null;

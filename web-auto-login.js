@@ -8,8 +8,8 @@
 (function() {
   'use strict';
 
-  // Configuración de la API
-  const API_URL = 'https://premioclick.cl/api';
+  // API en Vercel
+  const API_URL = 'https://sorteo-5lh6.vercel.app/api';
   
   console.log('🔧 Script de auto-login cargado');
   console.log('🔧 URL actual:', window.location.href);
