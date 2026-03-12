@@ -149,25 +149,8 @@ export default function AdminProfile() {
   };
 
   const getWebUrl = async () => {
-    // Obtener la URL base del API y construir la URL de la página web
-    const apiBaseUrl = (api && api.defaults && api.defaults.baseURL) || 'https://sorteo-5lh6.vercel.app/api';
-    // Remover /api del final si existe
-    let webUrl = apiBaseUrl.replace(/\/api$/, '');
-    
-    // Si no tiene protocolo, agregar https://
-    if (!webUrl.startsWith('http://') && !webUrl.startsWith('https://')) {
-      webUrl = `https://${webUrl}`;
-    }
-    
-    // Si termina con :3001, remover el puerto para producción
-    if (webUrl.includes(':3001')) {
-      webUrl = webUrl.replace(':3001', '');
-    }
-    
-    // En producción, usar siempre la URL de premioclick.cl
-    if (!__DEV__ || apiBaseUrl.includes('premioclick.cl')) {
-      webUrl = 'https://premioclick.cl';
-    }
+    // La página de sorteos/premiaciones siempre está en premioclick.cl (no en la API de Vercel)
+    let webUrl = 'https://premioclick.cl';
     
     // Obtener el token de autenticación
     try {
