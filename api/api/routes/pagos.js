@@ -53,6 +53,72 @@ if (!paypalConfig.client_id || !paypalConfig.client_secret) {
 }
 console.log('🔍 ========== FIN CONFIGURACIÓN PAYPAL ==========');
 
+// Endpoint para probar credenciales PayPal (sin autenticación de usuario)
+// GET /api/pagos/paypal/test → { ok: true } o { ok: false, error, hint }
+router.get('/paypal/test', async (req, res) => {
+  const clientId = (process.env.PAYPAL_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.PAYPAL_CLIENT_SECRET || '').trim();
+  const mode = (process.env.PAYPAL_MODE || 'sandbox').toLowerCase().trim();
+  const baseUrl = mode === 'live' ? 'https://api.paypal.com' : 'https://api.sandbox.paypal.com';
+
+  if (!clientId || !clientSecret) {
+    return res.status(500).json({
+      ok: false,
+      error: 'Faltan variables de entorno',
+      hint: 'En Vercel → Project → Settings → Environment Variables agrega PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET y PAYPAL_MODE (sandbox o live).',
+      config: {
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
+        mode
+      }
+    });
+  }
+
+  try {
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const { status, data } = await axios({
+      method: 'post',
+      url: `${baseUrl}/v1/oauth2/token`,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`
+      },
+      data: 'grant_type=client_credentials'
+    });
+
+    if (status === 200 && data.access_token) {
+      return res.json({
+        ok: true,
+        message: 'Credenciales PayPal correctas',
+        mode
+      });
+    }
+    return res.status(500).json({
+      ok: false,
+      error: 'PayPal no devolvió token',
+      hint: 'Revisa que PAYPAL_MODE coincida con el tipo de credenciales (sandbox vs live).'
+    });
+  } catch (err) {
+    const status = err.response?.status;
+    const details = err.response?.data;
+    let hint = 'Verifica en Vercel → Environment Variables: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET y PAYPAL_MODE.';
+
+    if (status === 401) {
+      hint = 'Client ID o Client Secret incorrectos, o no corresponden al modo "' + mode + '". En developer.paypal.com: Sandbox → credenciales para PAYPAL_MODE=sandbox; Live → credenciales para PAYPAL_MODE=live. Sin espacios al copiar.';
+    } else if (status === 400) {
+      hint = 'Revisa que PAYPAL_MODE sea exactamente "sandbox" o "live" (minúsculas, sin espacios).';
+    }
+
+    return res.status(500).json({
+      ok: false,
+      error: status === 401 ? 'Error de autenticación con PayPal (401)' : (details?.error_description || err.message || 'Error al conectar con PayPal'),
+      paypalError: details?.error,
+      hint,
+      config: { mode, hasClientId: !!clientId, hasClientSecret: !!clientSecret }
+    });
+  }
+});
+
 // Función de conversión CLP a USD
 // 1000 pesos chilenos = 1 dólar
 function convertirCLPaUSD(montoCLP) {
