@@ -36,6 +36,7 @@ const pagoRoutes = require('./routes/pagos');
 const tombolaRoutes = require('./routes/tombola');
 const adminRoutes = require('./routes/admin');
 const promocionesRoutes = require('./routes/promociones');
+const chatRoutes = require('./routes/chat');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sorteos', sorteoRoutes);
@@ -44,6 +45,7 @@ app.use('/api/pagos', pagoRoutes);
 app.use('/api/tombola', tombolaRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/promociones', promocionesRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Ruta de prueba
 app.get('/api/health', (req, res) => {
