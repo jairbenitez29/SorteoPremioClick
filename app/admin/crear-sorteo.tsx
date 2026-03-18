@@ -50,11 +50,12 @@ export default function CrearSorteo() {
       Alert.alert('Permisos necesarios', 'Necesitamos acceso a tu galería para seleccionar imágenes');
       return;
     }
-    // Sin límite de cantidad ni de recorte, igual que la imagen de portada
+    // Comprimir para no superar el límite de Vercel (413 Payload Too Large) PERO SIN recortar.
+    // Para que la imagen salga completa, NO usamos allowsEditing/aspect.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.8,
+      quality: 0.25,
       base64: true,
     });
 
@@ -105,11 +106,11 @@ export default function CrearSorteo() {
       return;
     }
 
-    // Sin recorte forzado ni límite de aspecto: se usa la imagen completa
+    // Comprimir para no superar límite de Vercel (413). SIN recorte para que se muestre completa.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.8,
+      quality: 0.25,
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {
@@ -734,6 +735,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 8,
+    resizeMode: 'contain',
   },
   removeImageButton: {
     position: 'absolute',
@@ -821,7 +823,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
     marginBottom: 12,
-    resizeMode: 'cover',
+    resizeMode: 'contain',
   },
   portadaConfirmPreview: {
     width: '100%',

@@ -15,6 +15,7 @@ let cantidadSeleccionada = 0;
 let precioUnitario = 0;
 let processing = false;
 let promocionSeleccionada = null;
+let maxTickets = 20;
 
 // Autenticación
 function getAuthToken() {
@@ -122,6 +123,15 @@ async function loadSorteo() {
         // Obtener precio del ticket (ahora viene en sorteo.precio_ticket)
         precioUnitario = parseFloat(sorteo.precio_ticket) || 0;
 
+        // Límite para el stepper (+/-)
+        // Si viene en estadisticas, usamos ese valor; si no, dejamos un fallback.
+        const disp = sorteo.estadisticas?.tickets_disponibles;
+        if (disp != null && !isNaN(parseInt(disp, 10)) && parseInt(disp, 10) > 0) {
+            maxTickets = parseInt(disp, 10);
+        } else {
+            maxTickets = 20;
+        }
+
         console.log('Precio unitario obtenido:', precioUnitario);
         console.log('Sorteo completo:', sorteo);
 
@@ -209,23 +219,53 @@ function mostrarCompra() {
 
     cantidadOptions.innerHTML = htmlOpciones;
 
-    actualizarTotal();
+    // Inicializar con 1 ticket para que el usuario pueda usar + / - inmediatamente
+    setCantidadNormal(1);
 }
 
-function seleccionarCantidad(cantidad) {
-    cantidadSeleccionada = cantidad;
-    promocionSeleccionada = null;
+function actualizarStepperUI() {
+    const valueEl = document.getElementById('cantidadStepperValue');
+    const menosBtn = document.getElementById('menosBtn');
+    const masBtn = document.getElementById('masBtn');
 
+    if (!valueEl || !menosBtn || !masBtn) return;
+
+    const value = cantidadSeleccionada || 0;
+    valueEl.textContent = value;
+
+    const estaPromo = !!promocionSeleccionada;
+    menosBtn.disabled = estaPromo || value <= 1;
+    masBtn.disabled = estaPromo || (maxTickets > 0 ? value >= maxTickets : false);
+}
+
+function setCantidadNormal(cantidad) {
+    if (!sorteo) return;
+
+    promocionSeleccionada = null;
+    cantidadSeleccionada = Math.max(1, parseInt(cantidad, 10) || 1);
+
+    if (maxTickets && maxTickets > 0) {
+        cantidadSeleccionada = Math.min(maxTickets, cantidadSeleccionada);
+    }
+
+    // Marcar visualmente si existe una card con ese número (si no existe, no pasa nada)
     document.querySelectorAll('.cantidad-option').forEach(opt => {
         opt.classList.remove('selected');
-        if (opt.dataset.tipo === 'normal' && parseInt(opt.dataset.cantidad) === cantidad) {
+        if (opt.dataset.tipo === 'normal' && parseInt(opt.dataset.cantidad, 10) === cantidadSeleccionada) {
             opt.classList.add('selected');
         }
     });
 
     actualizarTotal();
+
     const comprarBtn = document.getElementById('comprarBtn');
     if (comprarBtn) comprarBtn.disabled = false;
+
+    actualizarStepperUI();
+}
+
+function seleccionarCantidad(cantidad) {
+    setCantidadNormal(cantidad);
 }
 
 function seleccionarPromocion(promoId) {
@@ -249,6 +289,7 @@ function seleccionarPromocion(promoId) {
     actualizarTotal();
     const comprarBtn = document.getElementById('comprarBtn');
     if (comprarBtn) comprarBtn.disabled = false;
+    actualizarStepperUI(); // bloquear +/- mientras la promo define la cantidad
 }
 
 function actualizarTotal() {
@@ -519,6 +560,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('comprarBtn')?.addEventListener('click', comprarTicket);
+
+    // + / - de cantidad
+    document.getElementById('menosBtn')?.addEventListener('click', () => {
+        if (promocionSeleccionada) return;
+        setCantidadNormal((cantidadSeleccionada || 1) - 1);
+    });
+
+    document.getElementById('masBtn')?.addEventListener('click', () => {
+        if (promocionSeleccionada) return;
+        setCantidadNormal((cantidadSeleccionada || 1) + 1);
+    });
 });
 
 window.seleccionarCantidad = seleccionarCantidad;

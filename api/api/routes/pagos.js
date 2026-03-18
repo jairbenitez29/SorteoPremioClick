@@ -119,11 +119,13 @@ router.get('/paypal/test', async (req, res) => {
   }
 });
 
-// Función de conversión CLP a USD
-// 1000 pesos chilenos = 1 dólar
+// Función de conversión CLP a USD (configurable por env)
+// Por defecto: 1000 CLP = 1 USD. Para 50 CLP → 0.05 USD usa TASA_CLP_USD=1000
+// Si en PayPal ves 1 USD en vez de 0.05 USD, revisa que los tickets en la BD tengan precio 50 (no 1000)
 function convertirCLPaUSD(montoCLP) {
-  const TASA_CAMBIO = 1000; // 1000 CLP = 1 USD
-  return montoCLP / TASA_CAMBIO;
+  const TASA_CAMBIO = parseFloat(process.env.TASA_CLP_USD) || 1000;
+  const usd = montoCLP / TASA_CAMBIO;
+  return Math.round(usd * 100) / 100; // máximo 2 decimales para PayPal
 }
 
 // Crear pago PayPal
@@ -143,6 +145,9 @@ router.post('/paypal/create', authenticateToken, async (req, res) => {
       usuarioId: req.user.id,
       cantidadTickets: ticketIds?.length
     });
+    if (montoCLP === 50 && montoUSD >= 1) {
+      console.warn('⚠️ 50 CLP se convirtió en', montoUSD, 'USD. Revisa TASA_CLP_USD y que tickets.precio en BD sea 50.');
+    }
 
     if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
       console.error('❌ Error: No se proporcionaron tickets válidos');

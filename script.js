@@ -457,55 +457,37 @@ async function register(nombre, email, password, telefono) {
 
 // Inicializar Socket.io
 function initSocket() {
-    const token = getAuthToken();
-    const socketUrl = isProduction 
-        ? window.location.origin
-        : window.location.origin.replace(/:\d+$/, ':3001');
-    
-    socket = io(socketUrl, {
-        auth: token ? { token } : {}
+    // Pusher: conexión en tiempo real sin WebSockets nativos (funciona en Vercel)
+    const pusherClient = new Pusher('8230f2b79f984b7fad59', {
+        cluster: 'us2',
     });
 
-    socket.on('connect', async () => {
-        console.log('Conectado al servidor de chat');
-        if (token && currentUser) {
-            socket.emit('authenticate', { 
-                token, 
-                userId: currentUser.id, 
-                rol: currentUser.rol 
-            });
-        }
-        
-        // Cargar mensajes históricos si el usuario está autenticado
-        if (currentUser) {
-            await cargarMensajesHistoricos();
-        }
-    });
+    const channel = pusherClient.subscribe('chat');
 
-    socket.on('chat-message', (data) => {
+    channel.bind('new-message', (data) => {
         const chatModal = document.getElementById('chatModal');
         const isChatOpen = chatModal && chatModal.classList.contains('active');
-        
+
         addMessage(data.user, data.message, data.isAdmin, data.timestamp);
-        
-        // Si el chat no está abierto, incrementar contador de no leídos
+
         if (!isChatOpen) {
             incrementarMensajesNoLeidos();
         }
     });
 
-    socket.on('user-count', (count) => {
-        updateChatBadge(count);
+    pusherClient.connection.bind('connected', async () => {
+        console.log('✅ Conectado a Pusher');
+        if (currentUser) {
+            await cargarMensajesHistoricos();
+        }
     });
 
-    socket.on('disconnect', () => {
-        console.log('Desconectado del servidor');
+    pusherClient.connection.bind('error', (err) => {
+        console.error('❌ Error Pusher:', err);
     });
 
-    socket.on('connect_error', (error) => {
-        console.error('❌ Error al conectar al servidor de chat:', error);
-        console.error('❌ Error message:', error.message);
-    });
+    // Guardar referencia para que sendMessage() sepa que está listo
+    socket = { connected: true, pusher: pusherClient };
 }
 
 // Cargar sorteos
@@ -697,44 +679,39 @@ function addMessage(user, message, isAdmin, timestamp, scroll = true) {
     }
 }
 
-function sendMessage() {
+async function sendMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
-    
-    console.log('🔍 Intentando enviar mensaje:', message);
-    console.log('🔍 currentUser:', currentUser);
-    console.log('🔍 socket:', socket);
-    console.log('🔍 socket conectado?:', socket?.connected);
-    
+
     if (!currentUser) {
-        console.log('⚠️ No hay usuario, abriendo modal de login');
         openLoginModal();
         return;
     }
 
-    if (!message) {
-        console.log('⚠️ Mensaje vacío');
-        return;
-    }
+    if (!message) return;
 
-    if (!socket) {
-        console.error('❌ Socket no inicializado');
-        alert('Error: No se pudo conectar al chat. Por favor, recarga la página.');
-        return;
-    }
-
-    if (!socket.connected) {
-        console.error('❌ Socket no conectado');
-        alert('Error: No estás conectado al chat. Por favor, recarga la página.');
-        return;
-    }
-
-    console.log('✅ Enviando mensaje al servidor...');
-    socket.emit('chat-message', {
-        message: message
-    });
+    const token = getAuthToken();
     input.value = '';
-    console.log('✅ Mensaje enviado');
+
+    try {
+        const res = await fetch(`${API_URL}/chat/mensajes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ message }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error('❌ Error al enviar mensaje:', err);
+            alert('Error al enviar el mensaje. Por favor, intenta de nuevo.');
+        }
+    } catch (error) {
+        console.error('❌ Error de red al enviar mensaje:', error);
+        alert('Error de conexión. Por favor, recarga la página.');
+    }
 }
 
 let mensajesNoLeidos = 0;

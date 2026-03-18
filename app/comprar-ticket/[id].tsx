@@ -387,6 +387,21 @@ export default function ComprarTicketScreen() {
     p.cantidad_tickets != null
   );
 
+  // Limita el + / - al stock disponible (si viene desde la API)
+  const maxTickets =
+    (sorteo.estadisticas?.tickets_disponibles != null &&
+      !Number.isNaN(parseInt(String(sorteo.estadisticas.tickets_disponibles), 10)) &&
+      parseInt(String(sorteo.estadisticas.tickets_disponibles), 10) > 0)
+      ? parseInt(String(sorteo.estadisticas.tickets_disponibles), 10)
+      : 20;
+
+  const setCantidadNormal = (n: number) => {
+    if (promocionSeleccionada) return;
+    const next = Math.max(1, Math.min(maxTickets, n || 1));
+    setCantidad(next);
+    setPromocionSeleccionada(null);
+  };
+
   return (
     <View style={styles.container}>
       <SafeLinearGradient
@@ -408,6 +423,43 @@ export default function ComprarTicketScreen() {
               Selecciona la cantidad
             </Text>
 
+            <View style={styles.stepperRow}>
+              <TouchableOpacity
+                style={[
+                  styles.stepperButton,
+                  (promocionSeleccionada || cantidad <= 1) && styles.stepperButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (promocionSeleccionada) return;
+                  setCantidadNormal(cantidad - 1);
+                }}
+                disabled={!!promocionSeleccionada || cantidad <= 1}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="minus" size={20} color="#7b2cbf" />
+              </TouchableOpacity>
+
+              <Text variant="titleMedium" style={styles.stepperValue}>
+                {promocionSeleccionada ? promocionSeleccionada.cantidad_tickets : cantidad} Ticket
+                {((promocionSeleccionada ? promocionSeleccionada.cantidad_tickets : cantidad) || 0) > 1 ? 's' : ''}
+              </Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.stepperButton,
+                  (promocionSeleccionada || cantidad >= maxTickets) && styles.stepperButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (promocionSeleccionada) return;
+                  setCantidadNormal(cantidad + 1);
+                }}
+                disabled={!!promocionSeleccionada || cantidad >= maxTickets}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="plus" size={20} color="#7b2cbf" />
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.optionsContainer}>
               {/* Opción de 1 ticket */}
               <TouchableOpacity
@@ -416,8 +468,7 @@ export default function ComprarTicketScreen() {
                   !promocionSeleccionada && cantidad === 1 && styles.optionCardSelected,
                 ]}
                 onPress={() => {
-                  setCantidad(1);
-                  setPromocionSeleccionada(null);
+                  setCantidadNormal(1);
                 }}
                 activeOpacity={0.7}
               >
@@ -437,6 +488,114 @@ export default function ComprarTicketScreen() {
                 </View>
                 <Text variant="titleLarge" style={styles.optionPrice}>
                   ${precioUnitario.toFixed(0)} CLP
+                </Text>
+              </TouchableOpacity>
+
+              {/* Opción de 2 tickets */}
+              <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  !promocionSeleccionada && cantidad === 2 && styles.optionCardSelected,
+                ]}
+                onPress={() => {
+                  setCantidadNormal(2);
+                }}
+                disabled={!!promocionSeleccionada || maxTickets < 2}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionHeader}>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      !promocionSeleccionada && cantidad === 2 && styles.radioCircleSelected,
+                    ]}
+                  >
+                    {!promocionSeleccionada && cantidad === 2 && <View style={styles.radioInner} />}
+                  </View>
+                  <Text
+                    variant="bodyLarge"
+                    style={[
+                      styles.optionTitle,
+                      !promocionSeleccionada && cantidad === 2 && styles.optionTitleSelected,
+                    ]}
+                  >
+                    2 Tickets
+                  </Text>
+                </View>
+                <Text variant="titleLarge" style={styles.optionPrice}>
+                  ${(precioUnitario * 2).toFixed(0)} CLP
+                </Text>
+              </TouchableOpacity>
+
+              {/* Opción de 3 tickets */}
+              <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  !promocionSeleccionada && cantidad === 3 && styles.optionCardSelected,
+                ]}
+                onPress={() => {
+                  setCantidadNormal(3);
+                }}
+                disabled={!!promocionSeleccionada || maxTickets < 3}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionHeader}>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      !promocionSeleccionada && cantidad === 3 && styles.radioCircleSelected,
+                    ]}
+                  >
+                    {!promocionSeleccionada && cantidad === 3 && <View style={styles.radioInner} />}
+                  </View>
+                  <Text
+                    variant="bodyLarge"
+                    style={[
+                      styles.optionTitle,
+                      !promocionSeleccionada && cantidad === 3 && styles.optionTitleSelected,
+                    ]}
+                  >
+                    3 Tickets
+                  </Text>
+                </View>
+                <Text variant="titleLarge" style={styles.optionPrice}>
+                  ${(precioUnitario * 3).toFixed(0)} CLP
+                </Text>
+              </TouchableOpacity>
+
+              {/* Opción de 5 tickets */}
+              <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  !promocionSeleccionada && cantidad === 5 && styles.optionCardSelected,
+                ]}
+                onPress={() => {
+                  setCantidadNormal(5);
+                }}
+                disabled={!!promocionSeleccionada || maxTickets < 5}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionHeader}>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      !promocionSeleccionada && cantidad === 5 && styles.radioCircleSelected,
+                    ]}
+                  >
+                    {!promocionSeleccionada && cantidad === 5 && <View style={styles.radioInner} />}
+                  </View>
+                  <Text
+                    variant="bodyLarge"
+                    style={[
+                      styles.optionTitle,
+                      !promocionSeleccionada && cantidad === 5 && styles.optionTitleSelected,
+                    ]}
+                  >
+                    5 Tickets
+                  </Text>
+                </View>
+                <Text variant="titleLarge" style={styles.optionPrice}>
+                  ${(precioUnitario * 5).toFixed(0)} CLP
                 </Text>
               </TouchableOpacity>
 
@@ -606,6 +765,38 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     gap: 8,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
+    backgroundColor: '#fafafa',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  stepperButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#7b2cbf',
+    backgroundColor: '#f3e8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperButtonDisabled: {
+    opacity: 0.5,
+  },
+  stepperValue: {
+    flex: 1,
+    textAlign: 'center',
+    fontWeight: '800',
+    color: '#212121',
   },
   optionCard: {
     borderWidth: 2,
