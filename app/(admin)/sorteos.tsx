@@ -81,28 +81,6 @@ export default function AdminSorteos() {
     );
   };
 
-  const handleRealizarSorteo = async (sorteoId: number) => {
-    Alert.alert(
-      'Realizar Sorteo',
-      '¿Estás seguro de realizar este sorteo? Esta acción seleccionará los ganadores.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Realizar',
-          onPress: async () => {
-            try {
-              await api.post(`/tombola/realizar/${sorteoId}`);
-              Alert.alert('Éxito', 'Sorteo realizado correctamente');
-              loadSorteos();
-            } catch (error: any) {
-              Alert.alert('Error', 'No se pudo realizar el sorteo. Intenta de nuevo.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -201,17 +179,6 @@ export default function AdminSorteos() {
                 >
                   Editar
                 </Button>
-                {estadoReal === 'activo' && (
-                  <Button
-                    mode="contained"
-                    buttonColor="#212121"
-                    textColor="#fff"
-                    onPress={() => handleRealizarSorteo(sorteo.id)}
-                    style={styles.actionButton}
-                  >
-                    Realizar
-                  </Button>
-                )}
                 <IconButton
                   icon="delete"
                   iconColor="#f44336"
