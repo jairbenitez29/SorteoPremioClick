@@ -51,7 +51,7 @@ console.log('🔧 Modo desarrollo:', __DEV__);
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000, // 15 segundos de timeout (reducido para mejor UX)
+  timeout: 30000, // 30 segundos para tolerar cold starts de Vercel
   headers: {
     'Content-Type': 'application/json',
   },
@@ -90,18 +90,33 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar errores
+// Interceptor para reintentos automáticos y manejo de errores
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const config = error.config;
+
+    // Reintentar automáticamente en errores de red o timeout (cold start de Vercel)
+    const isNetworkError = !error.response;
+    const isTimeout = error.code === 'ECONNABORTED';
+    const is5xx = error.response?.status >= 500;
+
+    config._retryCount = config._retryCount || 0;
+    const MAX_RETRIES = 3;
+
+    if ((isNetworkError || isTimeout || is5xx) && config._retryCount < MAX_RETRIES) {
+      config._retryCount += 1;
+      const delay = config._retryCount * 2000; // 2s, 4s, 6s
+      console.log(`🔄 Reintentando (${config._retryCount}/${MAX_RETRIES}) en ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return api(config);
+    }
+
     if (error.response?.status === 404) {
       const url = error.config?.baseURL + (error.config?.url || '');
-      console.warn(
-        '⚠️ API 404 - Ruta no encontrada:',
-        url,
-        '| Comprueba que el backend esté activo en el servidor. Ver SOLUCION_404_API.md'
-      );
+      console.warn('⚠️ API 404 - Ruta no encontrada:', url);
     }
+
     try {
       if (error.response?.status === 401) {
         try {

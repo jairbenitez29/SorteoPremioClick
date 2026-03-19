@@ -73,6 +73,7 @@ export default function ComprarTicketScreen() {
 
   const loadSorteo = async () => {
     try {
+      setLoading(true);
       const response = await api.get(`/sorteos/${id}`);
       const sorteoData = response.data;
       setSorteo(sorteoData);
@@ -91,7 +92,14 @@ export default function ComprarTicketScreen() {
       }
     } catch (error) {
       console.error('Error al cargar sorteo:', error);
-      Alert.alert('Error', 'No se pudo cargar la información del sorteo');
+      Alert.alert(
+        'Error de conexión',
+        'No se pudo cargar el sorteo. Verifica tu conexión e intenta de nuevo.',
+        [
+          { text: 'Reintentar', onPress: () => loadSorteo() },
+          { text: 'Volver', style: 'cancel', onPress: () => router.back() },
+        ]
+      );
     } finally {
       setLoading(false);
     }
