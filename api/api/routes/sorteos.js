@@ -133,11 +133,28 @@ router.get('/', async (req, res) => {
     sorteos = Array.isArray(sorteos) ? sorteos.map((s) => ({ ...s })) : [];
 
     console.log('🔍 Obteniendo productos para cada sorteo...');
+    let productosBySorteo = {};
+    if (sorteos.length > 0) {
+      const sorteoIds = sorteos.map(s => s.id);
+      try {
+        const [allProductosRaw] = await pool.query(
+          `SELECT * FROM productos WHERE sorteo_id IN (?) ORDER BY posicion_premio`,
+          [sorteoIds]
+        );
+        
+        allProductosRaw.forEach(p => {
+          if (!productosBySorteo[p.sorteo_id]) {
+            productosBySorteo[p.sorteo_id] = [];
+          }
+          productosBySorteo[p.sorteo_id].push({ ...p });
+        });
+      } catch (e) {
+        console.error('Error al obtener todos los productos:', e);
+      }
+    }
+
     for (let sorteo of sorteos) {
-      const [productosRaw] = await pool.execute(
-        'SELECT * FROM productos WHERE sorteo_id = ? ORDER BY posicion_premio',
-        [sorteo.id]
-      );
+      const productosRaw = productosBySorteo[sorteo.id] || [];
 
       const productos = Array.isArray(productosRaw) ? productosRaw.map((p) => ({ ...p })) : [];
 

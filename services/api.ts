@@ -51,7 +51,7 @@ console.log('🔧 Modo desarrollo:', __DEV__);
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 segundos para tolerar cold starts de Vercel
+  timeout: 10000, // 10 segundos máximo por intento
   headers: {
     'Content-Type': 'application/json',
   },
@@ -102,11 +102,11 @@ api.interceptors.response.use(
     const is5xx = error.response?.status >= 500;
 
     config._retryCount = config._retryCount || 0;
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 2;
 
     if ((isNetworkError || isTimeout || is5xx) && config._retryCount < MAX_RETRIES) {
       config._retryCount += 1;
-      const delay = config._retryCount * 2000; // 2s, 4s, 6s
+      const delay = config._retryCount * 1000; // 1s, 2s
       console.log(`🔄 Reintentando (${config._retryCount}/${MAX_RETRIES}) en ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return api(config);

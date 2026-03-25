@@ -6,6 +6,26 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CACHE_KEY = 'cache_sorteos';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+async function getCached(allowExpired = true): Promise<any[] | null> {
+  try {
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (!allowExpired && Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { return null; }
+}
+
+async function setCache(data: any[]) {
+  try {
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
 
 // Función helper para verificar si un sorteo está vencido
 const isSorteoVencido = (fechaSorteo: string | Date): boolean => {
@@ -35,14 +55,30 @@ export default function HomeScreen() {
     loadSorteos();
   }, []);
 
-  const loadSorteos = async () => {
+  const loadSorteos = async (forceRefresh = false) => {
+    // Mostrar caché inmediatamente si existe
+    if (!forceRefresh) {
+      const cached = await getCached(true);
+      if (cached) {
+        setSorteos(cached);
+        setLoading(false);
+        // Actualizar en segundo plano sin mostrar spinner
+        api.get('/sorteos').then(r => {
+          setSorteos(r.data);
+          setCache(r.data);
+        }).catch(() => {});
+        return;
+      }
+    }
+    // Sin caché: mostrar spinner y esperar
     try {
       setLoading(true);
       const response = await api.get('/sorteos');
       setSorteos(response.data);
+      setCache(response.data);
     } catch {
       if (__DEV__) console.warn('No se pudieron cargar los sorteos');
-      setSorteos([]);
+      // Mantener datos visibles si ya había cache/UI cargada
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -51,7 +87,7 @@ export default function HomeScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadSorteos();
+    loadSorteos(true).finally(() => setRefreshing(false));
   };
 
   if (loading) {

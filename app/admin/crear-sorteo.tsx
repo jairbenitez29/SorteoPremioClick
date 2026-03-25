@@ -8,6 +8,15 @@ import * as FileSystem from 'expo-file-system';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 
+const MAX_IMAGE_BYTES = 350 * 1024; // 350KB por imagen aprox
+const MAX_REQUEST_BYTES = 3.8 * 1024 * 1024; // ~3.8MB total para evitar 413 en Vercel
+
+function estimateDataUrlBytes(dataUrl: string): number {
+  if (!dataUrl) return 0;
+  const base64 = dataUrl.split(',')[1] || '';
+  return Math.floor((base64.length * 3) / 4);
+}
+
 export default function CrearSorteo() {
   const router = useRouter();
   const [titulo, setTitulo] = useState('');
@@ -27,6 +36,33 @@ export default function CrearSorteo() {
   const [promoPrecio, setPromoPrecio] = useState('');
   const [promoDescripcion, setPromoDescripcion] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const estimateCurrentPayloadBytes = () => {
+    let total = imagenPortada ? estimateDataUrlBytes(imagenPortada) : 0;
+    for (const p of productos) {
+      total += (p.imagenes || []).reduce((acc, img) => acc + estimateDataUrlBytes(img), 0);
+    }
+    return total;
+  };
+
+  const validateCanAddImage = (candidateBytes: number) => {
+    if (candidateBytes > MAX_IMAGE_BYTES) {
+      Alert.alert(
+        'Imagen demasiado grande',
+        'Esta imagen sigue siendo pesada. Elige una imagen más liviana o recórtala antes de subir.'
+      );
+      return false;
+    }
+    const nextTotal = estimateCurrentPayloadBytes() + candidateBytes;
+    if (nextTotal > MAX_REQUEST_BYTES) {
+      Alert.alert(
+        'Demasiadas imágenes',
+        'El sorteo superaría el límite del servidor. Elimina algunas imágenes o usa imágenes más livianas.'
+      );
+      return false;
+    }
+    return true;
+  };
 
   const handleAddProducto = () => {
     setProductos([...productos, { nombre: '', descripcion: '', posicion_premio: productos.length + 1, imagenes: [] }]);
@@ -55,7 +91,7 @@ export default function CrearSorteo() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.25,
+      quality: 0.1,
       base64: true,
     });
 
@@ -78,6 +114,8 @@ export default function CrearSorteo() {
           return;
         }
       }
+      const imageBytes = estimateDataUrlBytes(base64Image);
+      if (!validateCanAddImage(imageBytes)) return;
       
       // Agregar imagen al producto específico
       const updated = [...productos];
@@ -110,7 +148,7 @@ export default function CrearSorteo() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.25,
+      quality: 0.1,
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {
@@ -127,6 +165,8 @@ export default function CrearSorteo() {
           return;
         }
       }
+      const imageBytes = estimateDataUrlBytes(base64Image);
+      if (!validateCanAddImage(imageBytes)) return;
       setTempPortadaBase64(base64Image);
       setShowPortadaConfirmModal(true);
     }
@@ -233,6 +273,15 @@ export default function CrearSorteo() {
         imagen_portada: imagenPortada || null,
         productos: productosData,
       };
+
+      const estimatedRequestBytes = JSON.stringify(requestData).length;
+      if (estimatedRequestBytes > MAX_REQUEST_BYTES) {
+        Alert.alert(
+          'Sorteo demasiado pesado',
+          'El sorteo tiene demasiadas imágenes para el límite del servidor. Reduce cantidad o tamaño de imágenes.'
+        );
+        return;
+      }
       
       console.log('🔍 Datos a enviar (resumen):', {
         titulo: requestData.titulo,

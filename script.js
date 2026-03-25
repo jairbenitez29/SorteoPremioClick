@@ -706,11 +706,11 @@ async function sendMessage() {
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             console.error('❌ Error al enviar mensaje:', err);
-            alert('Error al enviar el mensaje. Por favor, intenta de nuevo.');
+            alert('Error ' + res.status + ': ' + (err.error || err.message || 'Sin detalle'));
         }
     } catch (error) {
         console.error('❌ Error de red al enviar mensaje:', error);
-        alert('Error de conexión. Por favor, recarga la página.');
+        alert('Error de red: ' + error.message);
     }
 }
 

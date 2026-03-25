@@ -8,6 +8,35 @@ import { api } from '../../services/api';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 
 const PRECIO_TICKET_STORAGE_KEY = (sorteoId: string | string[]) => `precio_ticket_${Array.isArray(sorteoId) ? sorteoId[0] : sorteoId}`;
+const SORTEO_CACHE_KEY = (sorteoId: string | string[]) => `cache_sorteo_${Array.isArray(sorteoId) ? sorteoId[0] : sorteoId}`;
+const LIST_CACHE_KEY = 'cache_sorteos';
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function getCachedSorteo(sorteoId: string | string[]): Promise<any | null> {
+  const sid = Array.isArray(sorteoId) ? sorteoId[0] : sorteoId;
+  try {
+    // 1. Buscar caché del detalle específico
+    const raw = await AsyncStorage.getItem(SORTEO_CACHE_KEY(sid));
+    if (raw) {
+      const { data, ts } = JSON.parse(raw);
+      if (Date.now() - ts <= CACHE_TTL) return data;
+    }
+    // 2. Fallback: buscar en la lista de sorteos cacheada
+    const listRaw = await AsyncStorage.getItem(LIST_CACHE_KEY);
+    if (listRaw) {
+      const { data: list } = JSON.parse(listRaw);
+      const found = list?.find((s: any) => String(s.id) === String(sid));
+      if (found) return found;
+    }
+  } catch {}
+  return null;
+}
+
+async function cacheSorteo(sorteoId: string | string[], data: any) {
+  try {
+    await AsyncStorage.setItem(SORTEO_CACHE_KEY(sorteoId), JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
 
 /** Monto total a cobrar en CLP (el mismo que ve el usuario). El backend convierte a USD (ej. montoClp/1000) para PayPal. */
 function getMontoClp(sorteo: any, cantidad: number, promocionSeleccionada: any, localPrecioTicket: number | null): number {
@@ -71,25 +100,38 @@ export default function ComprarTicketScreen() {
     // Si el usuario está logueado, continuar con la compra normalmente
   };
 
+  const loadPrecioTicket = async () => {
+    const storageKey = PRECIO_TICKET_STORAGE_KEY(id);
+    const stored = await AsyncStorage.getItem(storageKey);
+    if (stored != null && stored !== '') {
+      const num = parseFloat(stored);
+      setLocalPrecioTicket(!Number.isNaN(num) && num > 0 ? num : null);
+    } else {
+      setLocalPrecioTicket(null);
+    }
+  };
+
   const loadSorteo = async () => {
+    // Mostrar caché inmediatamente si existe
+    const cached = await getCachedSorteo(id);
+    if (cached) {
+      setSorteo(cached);
+      await loadPrecioTicket();
+      setLoading(false);
+      // Actualizar en segundo plano
+      api.get(`/sorteos/${id}`).then(r => {
+        setSorteo(r.data);
+        cacheSorteo(id, r.data);
+      }).catch(() => {});
+      return;
+    }
+    // Sin caché: esperar con spinner
     try {
       setLoading(true);
       const response = await api.get(`/sorteos/${id}`);
-      const sorteoData = response.data;
-      setSorteo(sorteoData);
-
-      const storageKey = PRECIO_TICKET_STORAGE_KEY(id);
-      const stored = await AsyncStorage.getItem(storageKey);
-      if (stored != null && stored !== '') {
-        const num = parseFloat(stored);
-        if (!Number.isNaN(num) && num > 0) {
-          setLocalPrecioTicket(num);
-        } else {
-          setLocalPrecioTicket(null);
-        }
-      } else {
-        setLocalPrecioTicket(null);
-      }
+      setSorteo(response.data);
+      cacheSorteo(id, response.data);
+      await loadPrecioTicket();
     } catch (error) {
       console.error('Error al cargar sorteo:', error);
       Alert.alert(

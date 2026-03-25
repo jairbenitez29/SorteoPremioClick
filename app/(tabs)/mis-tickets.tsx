@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, FlatList } from 'react-native';
 import { Card, Text, ActivityIndicator, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -89,14 +89,18 @@ export default function MisTicketsScreen() {
           Mis Tickets
         </Text>
       </SafeLinearGradient>
-      <ScrollView
+      <FlatList
+        data={tickets}
+        keyExtractor={(item) => item.id.toString()}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {tickets.length === 0 ? (
+        initialNumToRender={10}
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        ListEmptyComponent={
           <Card style={styles.emptyCard}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.emptyText}>
@@ -107,58 +111,57 @@ export default function MisTicketsScreen() {
               </Text>
             </Card.Content>
           </Card>
-        ) : (
-          tickets.map((ticket) => (
-            <Card
-              key={ticket.id}
-              style={styles.card}
-              mode="elevated"
-              onPress={() => router.push(`/sorteo/${ticket.sorteo_id}`)}
+        }
+        renderItem={({ item: ticket }) => (
+          <Card
+            key={ticket.id}
+            style={styles.card}
+            mode="elevated"
+            onPress={() => router.push(`/sorteo/${ticket.sorteo_id}`)}
+          >
+            <SafeLinearGradient
+              colors={['#ffffff', '#f3e8ff', '#e9d5ff']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardGradient}
             >
-              <SafeLinearGradient
-                colors={['#ffffff', '#f3e8ff', '#e9d5ff']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cardGradient}
-              >
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Text variant="titleMedium" style={styles.cardTitle}>
-                      {ticket.sorteo_titulo}
-                    </Text>
-                    <Chip
-                      style={[
-                        styles.statusChip,
-                        ticket.estado === 'ganador' && styles.statusChipWinner,
-                        ticket.estado === 'vendido' && styles.statusChipSold,
-                      ]}
-                      textStyle={styles.statusChipText}
-                    >
-                      {ticket.estado === 'ganador' ? '🏆 Ganador' : 'Vendido'}
-                    </Chip>
-                  </View>
-                  <Text variant="bodyLarge" style={styles.ticketNumber}>
-                    Ticket: {ticket.numero_ticket}
+              <Card.Content style={styles.cardContent}>
+                <View style={styles.cardHeader}>
+                  <Text variant="titleMedium" style={styles.cardTitle}>
+                    {ticket.sorteo_titulo}
                   </Text>
-                  <Text variant="bodyMedium" style={styles.ticketPrice}>
-                    Precio: ${ticket.precio}
+                  <Chip
+                    style={[
+                      styles.statusChip,
+                      ticket.estado === 'ganador' && styles.statusChipWinner,
+                      ticket.estado === 'vendido' && styles.statusChipSold,
+                    ]}
+                    textStyle={styles.statusChipText}
+                  >
+                    {ticket.estado === 'ganador' ? '🏆 Ganador' : 'Vendido'}
+                  </Chip>
+                </View>
+                <Text variant="bodyLarge" style={styles.ticketNumber}>
+                  Ticket: {ticket.numero_ticket}
+                </Text>
+                <Text variant="bodyMedium" style={styles.ticketPrice}>
+                  Precio: ${ticket.precio}
+                </Text>
+                {ticket.fecha_compra && (
+                  <Text variant="bodySmall" style={styles.ticketDate}>
+                    Comprado: {format(new Date(ticket.fecha_compra), "dd 'de' MMMM 'de' yyyy")}
                   </Text>
-                  {ticket.fecha_compra && (
-                    <Text variant="bodySmall" style={styles.ticketDate}>
-                      Comprado: {format(new Date(ticket.fecha_compra), "dd 'de' MMMM 'de' yyyy")}
-                    </Text>
-                  )}
-                  {ticket.sorteo_estado === 'finalizado' && (
-                    <Text variant="bodySmall" style={styles.sorteoDate}>
-                      Sorteo finalizado: {format(new Date(ticket.fecha_sorteo), "dd 'de' MMMM 'de' yyyy")}
-                    </Text>
-                  )}
-                </Card.Content>
-              </SafeLinearGradient>
-            </Card>
-          ))
+                )}
+                {ticket.sorteo_estado === 'finalizado' && (
+                  <Text variant="bodySmall" style={styles.sorteoDate}>
+                    Sorteo finalizado: {format(new Date(ticket.fecha_sorteo), "dd 'de' MMMM 'de' yyyy")}
+                  </Text>
+                )}
+              </Card.Content>
+            </SafeLinearGradient>
+          </Card>
         )}
-      </ScrollView>
+      />
     </View>
   );
 }

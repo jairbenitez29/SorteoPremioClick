@@ -2,13 +2,14 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
 
 // Despierta Vercel en silencio para evitar cold starts cuando el usuario use la app
 function wakeUpServer() {
-  api.get('/health').catch(() => {
-    // Reintentar una vez más después de 3 segundos si falla el primer ping
-    setTimeout(() => api.get('/health').catch(() => {}), 3000);
+  fetch('https://sorteo-5lh6.vercel.app/api/health').catch(() => {
+    // Reintentar una vez más después de 2 segundos si falla el primer ping
+    setTimeout(() => {
+      fetch('https://sorteo-5lh6.vercel.app/api/health').catch(() => {});
+    }, 2000);
   });
 }
 
