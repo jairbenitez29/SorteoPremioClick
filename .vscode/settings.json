@@ -1,9 +1,0 @@
-{
-  "java.project.importOnFirstTimeStartup": "disabled",
-  "java.import.exclusions": [
-    "**/node_modules/**",
-    "**/android/**",
-    "**/.expo/**",
-    "**/ios/**"
-  ]
-}
