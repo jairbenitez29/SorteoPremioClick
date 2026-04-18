@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { validatePassword } from '../../utils/passwordValidator';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ErrorDisplay } from '../../components/ErrorDisplay';
@@ -99,8 +100,9 @@ export default function ProfileScreen() {
       return;
     }
 
-    if (nuevaPassword.length < 6) {
-      Alert.alert('Error', 'La nueva contraseña debe tener al menos 6 caracteres');
+    const pwCheck = validatePassword(nuevaPassword);
+    if (!pwCheck.valid) {
+      Alert.alert('Contraseña inválida', 'La nueva contraseña no cumple los requisitos:\n\n' + pwCheck.errors.join('\n'));
       return;
     }
 

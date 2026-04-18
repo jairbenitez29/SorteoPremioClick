@@ -1,10 +1,10 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
-import { AuthProvider } from '../context/AuthContext';
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 
 // ErrorBoundary más robusto
 class ErrorBoundary extends React.Component<
@@ -63,6 +63,27 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+function AppWithInactivity({ children }: { children: React.ReactNode }) {
+  const { resetInactivityTimer, user, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  // Cuando el timeout cierra la sesión estando en zona protegida, redirigir al login
+  useEffect(() => {
+    if (loading) return;
+    const inProtectedArea = segments[0] === '(admin)';
+    if (!user && inProtectedArea) {
+      router.replace('/(auth)/login');
+    }
+  }, [user, loading, segments]);
+
+  return (
+    <TouchableWithoutFeedback onPress={resetInactivityTimer} accessible={false}>
+      <View style={{ flex: 1 }}>{children}</View>
+    </TouchableWithoutFeedback>
+  );
+}
+
 export default function RootLayout() {
   try {
     return (
@@ -70,6 +91,7 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <PaperProvider>
             <AuthProvider>
+              <AppWithInactivity>
               <StatusBar style="auto" />
               <Stack
                 screenOptions={({ route }: any) => ({
@@ -93,6 +115,7 @@ export default function RootLayout() {
                 <Stack.Screen name="admin/crear-sorteo" options={{ title: 'Crear Sorteo' }} />
                 <Stack.Screen name="admin/editar-sorteo/[id]" options={{ title: 'Editar Sorteo' }} />
               </Stack>
+              </AppWithInactivity>
             </AuthProvider>
           </PaperProvider>
         </SafeAreaProvider>

@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { AppState, AppStateStatus } from 'react-native';
 import { api } from '../services/api';
+
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutos
+const SAVED_EMAIL_KEY = 'saved_email';
+const SAVED_PASSWORD_KEY = 'saved_password'; // guardado en SecureStore
 
 interface User {
   id: number;
@@ -12,295 +18,285 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
   register: (nombre: string, email: string, password: string, telefono?: string) => Promise<User>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   updateUser: (user: User) => void;
+  resetInactivityTimer: () => void;
+  getSavedCredentials: () => Promise<{ email: string; password: string } | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Función para limpiar mensajes técnicos - NUNCA mostrar información técnica al usuario
 function cleanErrorMessage(message: string): string {
   if (!message) return 'Error inesperado. Por favor, intenta de nuevo.';
-  
-  // Lista completa de patrones técnicos a filtrar
+
   const technicalPatterns = [
-    'AxiosError', 'Request failed', 'status code', 'ECONN', 'ERR_', 
+    'AxiosError', 'Request failed', 'status code', 'ECONN', 'ERR_',
     'Network Error', 'timeout', 'ECONNABORTED', 'ECONNREFUSED',
     'ENOTFOUND', 'EAI_AGAIN', 'getaddrinfo', 'socket', 'XMLHttpRequest',
     'fetch', 'axios', 'http://', 'https://', 'localhost', '127.0.0.1',
     'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EADDRINUSE'
   ];
-  
-  // Verificar si contiene información técnica
-  const hasTechnical = technicalPatterns.some(pattern => 
-    message.toLowerCase().includes(pattern.toLowerCase())
+
+  const hasTechnical = technicalPatterns.some(p =>
+    message.toLowerCase().includes(p.toLowerCase())
   );
-  
+
   if (hasTechnical) {
-    // Si contiene información técnica, determinar el tipo de error y dar mensaje apropiado
-    if (message.includes('401') || message.includes('403')) {
+    if (message.includes('401') || message.includes('403'))
       return 'Credenciales incorrectas. Por favor, verifica tus datos.';
-    }
-    if (message.includes('400')) {
+    if (message.includes('400'))
       return 'Los datos enviados no son válidos. Por favor, verifica la información.';
-    }
-    if (message.includes('409')) {
+    if (message.includes('409'))
       return 'El email ya está registrado. Por favor, usa otro email.';
-    }
-    if (message.includes('500')) {
+    if (message.includes('500'))
       return 'Error en el servidor. Por favor, intenta más tarde.';
-    }
-    if (message.includes('timeout') || message.includes('ECONNABORTED')) {
+    if (message.includes('timeout') || message.includes('ECONNABORTED'))
       return 'El servidor está tardando demasiado. Verifica tu conexión e intenta de nuevo.';
-    }
-    if (message.includes('ECONNREFUSED') || message.includes('Network') || message.includes('ERR_NETWORK')) {
+    if (message.includes('ECONNREFUSED') || message.includes('Network') || message.includes('ERR_NETWORK'))
       return 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
-    }
-    // Mensaje genérico para cualquier otro error técnico
     return 'Error al procesar la solicitud. Por favor, intenta de nuevo.';
   }
-  
-  // Limpiar cualquier código de error que pueda quedar (solo si está en formato técnico)
+
   let cleaned = message
-    .replace(/Error \d{3}/gi, 'Error') // "Error 401" -> "Error"
-    .replace(/status code \d{3}/gi, '') // "status code 400" -> ""
-    .replace(/\[.*?\]/g, '') // Eliminar corchetes con información técnica
-    .replace(/\(.*?\)/g, '') // Eliminar paréntesis con información técnica
-    .replace(/:\s*\d{3}/g, '') // ": 400" -> ""
+    .replace(/Error \d{3}/gi, 'Error')
+    .replace(/status code \d{3}/gi, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/:\s*\d{3}/g, '')
     .trim();
-  
-  // Si después de limpiar queda vacío o muy corto, usar mensaje genérico
-  if (!cleaned || cleaned.length < 5) {
+
+  if (!cleaned || cleaned.length < 5)
     return 'Error inesperado. Por favor, intenta de nuevo.';
-  }
-  
+
   return cleaned;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoutRef = useRef<(() => Promise<void>) | null>(null);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    inactivityTimer.current = setTimeout(async () => {
+      if (logoutRef.current) await logoutRef.current();
+    }, INACTIVITY_TIMEOUT);
+  }, []);
 
   useEffect(() => {
     checkAuth();
+
+    // Detectar cuando la app vuelve al primer plano
+    const subscription = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') {
+        resetInactivityTimer();
+      } else if (state === 'background' || state === 'inactive') {
+        // Guardar timestamp cuando sale al fondo
+        AsyncStorage.setItem('app_background_ts', String(Date.now())).catch(() => {});
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
   }, []);
+
+  // Verificar si estuvo inactivo más de 10 min cuando regresa
+  useEffect(() => {
+    if (!user) return;
+    resetInactivityTimer();
+
+    const subscription = AppState.addEventListener('change', async (state: AppStateStatus) => {
+      if (state === 'active') {
+        try {
+          const ts = await AsyncStorage.getItem('app_background_ts');
+          if (ts) {
+            const elapsed = Date.now() - parseInt(ts);
+            if (elapsed >= INACTIVITY_TIMEOUT) {
+              if (logoutRef.current) await logoutRef.current();
+              return;
+            }
+          }
+        } catch {}
+        resetInactivityTimer();
+      } else {
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [user, resetInactivityTimer]);
 
   const checkAuth = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        // Agregar timeout para evitar que se quede colgado
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
-        
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         try {
-          const response = await api.get('/auth/verify', {
-            signal: controller.signal
-          });
+          const response = await api.get('/auth/verify', { signal: controller.signal });
           const userData = response.data.user;
-          console.log('🔍 Usuario verificado (checkAuth):', userData);
-          console.log('🔍 Rol del usuario:', userData.rol);
+          console.log('Usuario verificado:', userData?.email);
           setUser(userData);
         } catch (verifyError: any) {
-          // Si hay error de conexión, simplemente no autenticamos pero no crasheamos
-          console.log('⚠️ Error al verificar token (puede ser problema de conexión):', verifyError.message);
-          if (verifyError.code !== 'ERR_CANCELED' && verifyError.code !== 'ERR_NETWORK' && verifyError.code !== 'ECONNABORTED') {
-            // Solo eliminar token si es un error de autenticación, no de conexión
-            if (verifyError.response?.status === 401 || verifyError.response?.status === 403) {
-              await AsyncStorage.removeItem('token');
-              delete api.defaults.headers.common['Authorization'];
-            }
+          console.log('Error al verificar token:', verifyError.message);
+          if (verifyError.response?.status === 401 || verifyError.response?.status === 403) {
+            await AsyncStorage.removeItem('token');
+            delete api.defaults.headers.common['Authorization'];
           }
         } finally {
           clearTimeout(timeoutId);
         }
       }
     } catch (error: any) {
-      // Error al leer AsyncStorage o cualquier otro error - no crashear
-      console.log('⚠️ Auth check error (no crítico):', error?.message || error);
+      console.log('Auth check error:', error?.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const logout = useCallback(async () => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('app_background_ts');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
+  }, []);
+
+  // Mantener referencia actualizada para el timer
+  useEffect(() => {
+    logoutRef.current = logout;
+  }, [logout]);
+
+  const login = async (email: string, password: string, rememberMe = false) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      
+      const { token, user: userData } = response.data;
+
       await AsyncStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      return user; // Retornar el usuario para que el login pueda verificar el rol
-    } catch (error: any) {
-      // Log técnico solo en consola (no se muestra al usuario)
-      // Usar console.log en lugar de console.error para evitar que se capture como Snackbar
-      if (__DEV__) {
-        console.log('⚠️ Error en login (solo desarrollo):', {
-          status: error.response?.status,
-          message: error.message?.substring(0, 50) // Solo primeros 50 caracteres
-        });
+      setUser(userData);
+
+      if (rememberMe) {
+        await AsyncStorage.setItem(SAVED_EMAIL_KEY, email);
+        await SecureStore.setItemAsync(SAVED_PASSWORD_KEY, password);
+      } else {
+        await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
+        await SecureStore.deleteItemAsync(SAVED_PASSWORD_KEY).catch(() => {});
       }
-      
-      // Mensajes amigables según el tipo de error - NUNCA mostrar información técnica
+
+      resetInactivityTimer();
+      return userData;
+    } catch (error: any) {
+      if (__DEV__) {
+        console.log('Error en login:', { status: error.response?.status });
+      }
+
       let errorMessage = 'Error al iniciar sesión. Verifica tu conexión.';
-      
       if (error.response) {
         const status = error.response.status;
-        if (status === 401) {
+        if (status === 401)
           errorMessage = 'Email o contraseña incorrectos. Por favor, verifica tus credenciales.';
-        } else if (status === 400) {
-          // Filtrar mensajes técnicos del backend
-          const backendError = error.response.data?.error || error.response.data?.message || '';
-          if (backendError && !backendError.includes('AxiosError') && !backendError.includes('Request failed')) {
-            errorMessage = backendError;
-          } else {
-            errorMessage = 'Los datos enviados no son válidos. Por favor, verifica la información.';
-          }
-        } else if (status === 500) {
+        else if (status === 400)
+          errorMessage = 'Los datos enviados no son válidos.';
+        else if (status === 500)
           errorMessage = 'Error en el servidor. Por favor, intenta más tarde.';
-        } else if (status === 503) {
-          errorMessage = 'El servidor está temporalmente no disponible. Por favor, intenta más tarde.';
-        } else {
-          // Para otros códigos, usar mensaje genérico
+        else
           errorMessage = 'Error al iniciar sesión. Por favor, intenta de nuevo.';
-        }
       } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         errorMessage = 'El servidor está tardando demasiado. Verifica tu conexión e intenta de nuevo.';
-      } else if (error.code === 'ECONNREFUSED' || error.message?.includes('Network') || error.message?.includes('ERR_NETWORK')) {
-        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
       } else if (error.request && !error.response) {
         errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión e intenta de nuevo.';
       }
-      
-      // Limpiar el mensaje final de CUALQUIER información técnica antes de lanzarlo
-      const cleanMessage = cleanErrorMessage(errorMessage);
-      
-      // Crear un nuevo Error con el mensaje limpio (sin stack trace técnico)
-      const userFriendlyError = new Error(cleanMessage);
-      // Eliminar el stack trace para evitar información técnica
+
+      const userFriendlyError = new Error(cleanErrorMessage(errorMessage));
       userFriendlyError.stack = undefined;
-      
       throw userFriendlyError;
     }
   };
 
   const register = async (nombre: string, email: string, password: string, telefono?: string) => {
     try {
-      // Preparar el payload, solo incluir telefono si tiene valor
       const payload: any = { nombre, email, password };
-      if (telefono && telefono.trim() !== '') {
-        payload.telefono = telefono.trim();
-      }
-      
-      console.log('📤 Enviando registro con payload:', { ...payload, password: '***' });
-      
+      if (telefono && telefono.trim() !== '') payload.telefono = telefono.trim();
+
       const response = await api.post('/auth/register', payload);
-      const { token, user } = response.data;
-      
+      const { token, user: userData } = response.data;
+
       await AsyncStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      return user; // Retornar el usuario para que el registro pueda verificar el rol
+      setUser(userData);
+      resetInactivityTimer();
+      return userData;
     } catch (error: any) {
-      // Log técnico solo en consola (no se muestra al usuario)
-      // Usar console.log en lugar de console.error para evitar que se capture como Snackbar
       if (__DEV__) {
-        console.log('⚠️ Error en register (solo desarrollo):', {
-          status: error.response?.status,
-          message: error.message?.substring(0, 50) // Solo primeros 50 caracteres
-        });
+        console.log('Error en register:', { status: error.response?.status });
       }
-      
-      // Mensajes amigables según el tipo de error - NUNCA mostrar información técnica
+
       let errorMessage = 'Error al registrarse. Verifica tu conexión.';
-      
       if (error.response) {
         const status = error.response.status;
         if (status === 400) {
-          // Error de validación
           if (error.response.data?.errors && Array.isArray(error.response.data.errors)) {
-            const messages = error.response.data.errors.map((e: any) => {
-              const msg = e.msg || e.message || '';
-              // Filtrar mensajes técnicos
-              if (msg.includes('AxiosError') || msg.includes('Request failed')) {
-                return '';
-              }
-              if (msg.includes('email') || msg.includes('Email')) {
-                return 'El email ya está registrado o no es válido.';
-              }
-              if (msg.includes('password') || msg.includes('Password')) {
-                return 'La contraseña debe tener al menos 6 caracteres.';
-              }
-              return msg || 'Campo inválido';
-            }).filter((m: string) => m !== ''); // Eliminar mensajes vacíos
+            const messages = error.response.data.errors
+              .map((e: any) => {
+                const msg = e.msg || e.message || '';
+                if (msg.includes('email') || msg.includes('Email'))
+                  return 'El email ya está registrado o no es válido.';
+                if (msg.includes('password') || msg.includes('Password'))
+                  return 'La contraseña no cumple los requisitos mínimos.';
+                return msg || 'Campo inválido';
+              })
+              .filter((m: string) => m !== '');
             errorMessage = messages.length > 0 ? messages.join('\n') : 'Los datos enviados no son válidos.';
           } else if (error.response.data?.error) {
-            const backendError = error.response.data.error;
-            // Filtrar mensajes técnicos
-            if (backendError.includes('AxiosError') || backendError.includes('Request failed')) {
-              errorMessage = 'Los datos enviados no son válidos. Por favor, verifica la información.';
-            } else if (backendError.includes('email') || backendError.includes('Email')) {
+            const be = error.response.data.error;
+            if (be.includes('email') || be.includes('Email'))
               errorMessage = 'El email ya está registrado. Por favor, usa otro email o inicia sesión.';
-            } else {
-              errorMessage = backendError;
-            }
-          } else if (error.response.data?.message) {
-            const backendMsg = error.response.data.message;
-            // Filtrar mensajes técnicos
-            if (backendMsg.includes('AxiosError') || backendMsg.includes('Request failed')) {
-              errorMessage = 'Los datos enviados no son válidos. Por favor, verifica la información.';
-            } else {
-              errorMessage = backendMsg;
-            }
+            else
+              errorMessage = be;
           } else {
-            errorMessage = 'Los datos enviados no son válidos. Por favor, verifica la información.';
+            errorMessage = 'Los datos enviados no son válidos.';
           }
         } else if (status === 409) {
           errorMessage = 'El email ya está registrado. Por favor, usa otro email o inicia sesión.';
         } else if (status === 500) {
           errorMessage = 'Error en el servidor. Por favor, intenta más tarde.';
-        } else if (status === 503) {
-          errorMessage = 'El servidor está temporalmente no disponible. Por favor, intenta más tarde.';
         } else {
           errorMessage = 'Error al registrarse. Por favor, intenta de nuevo.';
         }
-      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = 'El servidor está tardando demasiado. Verifica tu conexión e intenta de nuevo.';
-      } else if (error.code === 'ECONNREFUSED' || error.message?.includes('Network') || error.message?.includes('ERR_NETWORK')) {
-        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
       } else if (error.request && !error.response) {
-        errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión e intenta de nuevo.';
+        errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión.';
       }
-      
-      // Limpiar el mensaje final de CUALQUIER información técnica antes de lanzarlo
-      const cleanMessage = cleanErrorMessage(errorMessage);
-      
-      // Crear un nuevo Error con el mensaje limpio (sin stack trace técnico)
-      const userFriendlyError = new Error(cleanMessage);
-      // Eliminar el stack trace para evitar información técnica
+
+      const userFriendlyError = new Error(cleanErrorMessage(errorMessage));
       userFriendlyError.stack = undefined;
-      
       throw userFriendlyError;
     }
   };
 
-  const logout = async () => {
-    await AsyncStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
+  const getSavedCredentials = async (): Promise<{ email: string; password: string } | null> => {
+    try {
+      const email = await AsyncStorage.getItem(SAVED_EMAIL_KEY);
+      const password = await SecureStore.getItemAsync(SAVED_PASSWORD_KEY);
+      if (email && password) return { email, password };
+    } catch {}
+    return null;
   };
 
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-  };
+  const updateUser = (updatedUser: User) => setUser(updatedUser);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth, updateUser }}>
+    <AuthContext.Provider value={{
+      user, loading, login, register, logout, checkAuth,
+      updateUser, resetInactivityTimer, getSavedCredentials
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -308,9 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (context === undefined)
     throw new Error('useAuth must be used within an AuthProvider');
-  }
   return context;
 }
-
