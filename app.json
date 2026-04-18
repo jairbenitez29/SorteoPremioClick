@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "PremioClick",
+    "slug": "premioclick",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#7b2cbf"
+    },
+    "icon": "./assets/logo.png",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.premioclick.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#7b2cbf"
+      },
+      "package": "com.premioclick.app",
+      "usesCleartextTraffic": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "updates": {
+      "enabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser"
+    ],
+    "scheme": "premioclick",
+    "schemes": [
+      "premioclick",
+      "sorteosapp"
+    ],
+    "extra": {
+      "router": {
+        "root": "app"
+      },
+      "eas": {
+        "projectId": "6517a883-47c0-4fe8-a948-82304ef4b14e"
+      }
+    },
+    "owner": "jairbenitez"
+  }
+}

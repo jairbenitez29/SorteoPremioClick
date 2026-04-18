@@ -12,7 +12,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const PRECIO_TICKET_STORAGE_KEY = (sorteoId: string | string[]) => `precio_ticket_${Array.isArray(sorteoId) ? sorteoId[0] : sorteoId}`;
 
 export default function EditarSorteo() {
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');

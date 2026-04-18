@@ -213,7 +213,7 @@ export default function AdminProfile() {
               </Text>
               <View style={styles.adminBadge}>
                 <Text variant="labelSmall" style={styles.adminBadgeText}>
-                  👑 Administrador
+                  Administrador
                 </Text>
               </View>
             </View>

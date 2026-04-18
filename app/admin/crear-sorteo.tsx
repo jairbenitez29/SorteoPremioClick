@@ -390,7 +390,7 @@ export default function CrearSorteo() {
           />
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            🖼️ Imagen de Portada
+            Imagen de Portada
           </Text>
           <Text variant="bodySmall" style={styles.sectionSubtitle}>
             Esta será la imagen principal que se mostrará en el sorteo
