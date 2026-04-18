@@ -1,0 +1,14 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/premioclick/public_html/
+    - /bin/cp index.html $DEPLOYPATH
+    - /bin/cp script.js $DEPLOYPATH
+    - /bin/cp styles.css $DEPLOYPATH
+    - /bin/cp comprar-ticket.html $DEPLOYPATH
+    - /bin/cp comprar-ticket.js $DEPLOYPATH
+    - /bin/cp detalle-sorteo.html $DEPLOYPATH
+    - /bin/cp detalle-sorteo.js $DEPLOYPATH
+    - /bin/cp pago-exitoso.html $DEPLOYPATH
+    - /bin/cp web-auto-login.js $DEPLOYPATH
+    - /bin/cp sorteos.js $DEPLOYPATH 2>/dev/null || true
