@@ -137,10 +137,22 @@ router.get('/', async (req, res) => {
     if (sorteos.length > 0) {
       const sorteoIds = sorteos.map(s => s.id);
       try {
-        const [allProductosRaw] = await pool.query(
-          `SELECT * FROM productos WHERE sorteo_id IN (?) ORDER BY posicion_premio`,
-          [sorteoIds]
-        );
+        const { DB_TYPE: dbType } = require('../config/database');
+        let allProductosRaw;
+        if (dbType === 'postgres') {
+          const placeholders = sorteoIds.map((_, i) => `$${i + 1}`).join(', ');
+          const result = await pool.query(
+            `SELECT * FROM productos WHERE sorteo_id IN (${placeholders}) ORDER BY posicion_premio`,
+            sorteoIds
+          );
+          allProductosRaw = result.rows;
+        } else {
+          const [rows] = await pool.query(
+            `SELECT * FROM productos WHERE sorteo_id IN (?) ORDER BY posicion_premio`,
+            [sorteoIds]
+          );
+          allProductosRaw = rows;
+        }
         
         allProductosRaw.forEach(p => {
           if (!productosBySorteo[p.sorteo_id]) {

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Exitoso - PremioClick</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="index.html" class="logo" style="text-decoration: none; cursor: pointer;">
+                <img src="logo.png" alt="PremioClick" class="logo-img">
+                <span>PremioClick</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div style="max-width: 600px; margin: 2rem auto; padding: 0 20px;">
+        <div class="compra-card" style="text-align: center; padding: 3rem 2rem;">
+            <div id="loadingContainer" style="display: block;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                <h2>Procesando pago...</h2>
+                <p>Por favor, espera mientras confirmamos tu pago.</p>
+            </div>
+
+            <div id="successContainer" style="display: none;">
+                <div style="font-size: 4rem; color: var(--success); margin-bottom: 1rem;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2 style="color: var(--success); margin-bottom: 1rem;">¡Pago Exitoso!</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem;">Tu compra se ha procesado correctamente. Ya puedes ver tus tickets.</p>
+                <button class="comprar-btn" onclick="window.location.href='index.html'" style="width: 100%;">
+                    <i class="fas fa-home"></i>
+                    <span>Volver al Inicio</span>
+                </button>
+            </div>
+
+            <div id="errorContainer" style="display: none;">
+                <div style="font-size: 4rem; color: var(--danger); margin-bottom: 1rem;">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h2 style="color: var(--danger); margin-bottom: 1rem;">Error al Procesar el Pago</h2>
+                <p id="errorMessage" style="color: var(--text-light); margin-bottom: 2rem;">Hubo un problema al procesar el pago.</p>
+                <button class="comprar-btn" onclick="window.location.href='index.html'" style="width: 100%;">
+                    <i class="fas fa-home"></i>
+                    <span>Volver al Inicio</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Obtener parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get('paymentId');
+        const PayerID = urlParams.get('PayerID');
+
+        // Configuración de API
+        const isProduction = window.location.hostname.includes('vercel.app') ||
+                             window.location.hostname.includes('railway.app') ||
+                             window.location.hostname.includes('render.com') ||
+                             window.location.hostname.includes('premioclick.cl');
+        const API_URL = isProduction
+            ? 'https://sorteo-premio-click.vercel.app/api'
+            : window.location.origin.replace(/:\d+$/, ':3001') + '/api';
+
+        // Ejecutar el pago (sin necesidad de token de sesión)
+        async function ejecutarPago() {
+            if (!paymentId || !PayerID) {
+                mostrarError('Faltan parámetros necesarios para procesar el pago.');
+                return;
+            }
+
+            try {
+                // Usar el endpoint execute-web que no requiere autenticación
+                const pagoResponse = await fetch(`${API_URL}/pagos/paypal/execute-web`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        paymentId: paymentId,
+                        payerId: PayerID
+                    })
+                });
+
+                const pagoData = await pagoResponse.json();
+
+                if (pagoResponse.ok && pagoData.success) {
+                    document.getElementById('loadingContainer').style.display = 'none';
+                    document.getElementById('successContainer').style.display = 'block';
+                } else {
+                    mostrarError(pagoData.error || 'No se pudo completar el pago. Por favor, contacta al soporte.');
+                }
+            } catch (error) {
+                console.error('Error al ejecutar pago:', error);
+                mostrarError('Hubo un problema al procesar el pago. Por favor, contacta al soporte.');
+            }
+        }
+
+        function mostrarError(mensaje) {
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('errorMessage').textContent = mensaje;
+        }
+
+        // Ejecutar cuando la página carga
+        document.addEventListener('DOMContentLoaded', () => {
+            ejecutarPago();
+        });
+    </script>
+</body>
+</html>

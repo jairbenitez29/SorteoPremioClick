@@ -39,14 +39,11 @@ export default function Index() {
             router.replace('/(tabs)/home');
           }
         } else {
-          // Si no hay usuario, permitir ver premios como invitado
-          // No redirigir automáticamente al login
-          router.replace('/(tabs)/home');
+          router.replace('/(auth)/login');
         }
       } catch (error) {
         console.error('Error en redirección:', error);
-        // Si hay error, redirigir a home de todas formas
-        router.replace('/(tabs)/home');
+        router.replace('/(auth)/login');
       }
     }
   }, [user, loading]);
