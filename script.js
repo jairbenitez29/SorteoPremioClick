@@ -695,6 +695,10 @@ async function sendMessage() {
     const token = getAuthToken();
     input.value = '';
 
+    // Agregar mensaje localmente de inmediato
+    const isAdmin = currentUser?.rol === 'admin';
+    addMessage(currentUser?.nombre || 'Tú', message, isAdmin, new Date().toISOString());
+
     try {
         const res = await fetch(`${API_URL}/chat/mensajes`, {
             method: 'POST',
