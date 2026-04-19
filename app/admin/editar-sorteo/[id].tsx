@@ -574,7 +574,7 @@ export default function EditarSorteo() {
                 />
               </View>
             ))}
-            {imagenes.length < 5 && (
+            {imagenes.length < 10 && (
               <TouchableOpacity style={styles.addImageButton} onPress={pickImage}>
                 <Text style={styles.addImageText}>+</Text>
                 <Text style={styles.addImageLabel}>Agregar</Text>

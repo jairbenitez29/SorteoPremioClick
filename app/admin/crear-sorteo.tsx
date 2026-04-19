@@ -536,7 +536,7 @@ export default function CrearSorteo() {
                       />
                     </View>
                   ))}
-                  {(producto.imagenes || []).length < 5 && (
+                  {(producto.imagenes || []).length < 10 && (
                     <TouchableOpacity style={styles.addImageButton} onPress={() => pickImage(index)}>
                       <Text style={styles.addImageText}>+</Text>
                       <Text style={styles.addImageLabel}>Agregar</Text>
