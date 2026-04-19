@@ -497,9 +497,19 @@ async function loadSorteos(filter = 'todos') {
     const grid = document.getElementById('sorteosGrid');
     grid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i><p>Cargando sorteos...</p></div>';
 
+    let response, data;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            response = await fetch(`${API_URL}/sorteos`);
+            data = await response.json();
+            if (response.ok && Array.isArray(data)) break;
+        } catch (e) {
+            if (attempt === 3) throw e;
+        }
+        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1500));
+    }
+
     try {
-        const response = await fetch(`${API_URL}/sorteos`);
-        const data = await response.json();
 
         // Si la API devuelve error (500, 404, etc.) data puede ser { error, message }, no un array
         const sorteos = Array.isArray(data) ? data : [];
