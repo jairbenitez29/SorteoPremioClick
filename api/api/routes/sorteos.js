@@ -619,14 +619,21 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     let imagenesArray = [];
     if (imagenes && Array.isArray(imagenes)) {
-      imagenesArray = imagenes.slice(0, 5);
+      imagenesArray = imagenes.slice(0, 10);
     }
 
-    console.log('🔍 Imágenes recibidas para actualizar:', imagenes);
-    console.log('🔍 Imágenes procesadas:', imagenesArray);
-    console.log('🔍 Cantidad de imágenes:', imagenesArray.length);
-
     const imagenesJson = imagenesArray.length > 0 ? JSON.stringify(imagenesArray) : null;
+
+    // Preservar imagen_portada existente si no se envía una nueva
+    const sorteoActual = sorteos[0];
+    const nuevaPortada = imagen_portada !== undefined
+      ? (imagen_portada || null)
+      : sorteoActual.imagen_portada;
+
+    // Preservar imagenes existentes si no se envían nuevas
+    const nuevasImagenes = imagenes !== undefined
+      ? imagenesJson
+      : sorteoActual.imagenes;
 
     // Actualizar sorteo (incluye precio_ticket para precio unitario del ticket)
     const precioTicketValue = (precio_ticket !== undefined && precio_ticket !== null && precio_ticket !== '')
@@ -634,7 +641,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       : null;
     await pool.execute(
       'UPDATE sorteos SET titulo = ?, descripcion = ?, fecha_sorteo = ?, estado = ?, imagenes = ?, imagen_portada = ?, link = ?, precio_ticket = ? WHERE id = ?',
-      [titulo, descripcion, fecha_sorteo, estado, imagenesJson, imagen_portada || null, link || null, precioTicketValue, id]
+      [titulo, descripcion, fecha_sorteo, estado, nuevasImagenes, nuevaPortada, link || null, precioTicketValue, id]
     );
 
     if (productos && Array.isArray(productos)) {
