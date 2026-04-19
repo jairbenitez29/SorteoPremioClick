@@ -41,7 +41,7 @@ function handleAutoLogin(user, token) {
     }
     
     // Reconectar socket con autenticación
-    if (socket) {
+    if (socket && typeof socket.disconnect === 'function') {
         socket.disconnect();
     }
     if (typeof initSocket === 'function') {
@@ -199,7 +199,7 @@ async function performCheckAuth() {
             }
             
             updateUIForUser(currentUser);
-            if (socket) {
+            if (socket && typeof socket.emit === 'function') {
                 socket.emit('authenticate', { token, userId: currentUser.id, rol: currentUser.rol });
             }
         } else {
