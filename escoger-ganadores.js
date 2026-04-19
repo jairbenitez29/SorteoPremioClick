@@ -1,4 +1,4 @@
-// Configuración
+// Configuración v2
 const isProduction = window.location.hostname.includes('vercel.app') ||
                      window.location.hostname.includes('railway.app') ||
                      window.location.hostname.includes('render.com') ||
