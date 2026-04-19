@@ -102,12 +102,6 @@
       }
     } catch (error) {
       console.error('❌ Error en auto-login:', error);
-      console.error('❌ Stack:', error.stack);
-      
-      // Limpiar token inválido si existe
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
       return { success: false, error: error.message };
     }
   }
@@ -175,11 +169,9 @@
           console.log('✅ Usuario autenticado exitosamente');
         } else {
           console.warn('⚠️ No se pudo autenticar automáticamente:', result.error);
-          alert('No se pudo autenticar automáticamente. Por favor, inicia sesión manualmente.');
         }
       }).catch(error => {
         console.error('❌ Error en proceso de auto-login:', error);
-        alert('Error al autenticar automáticamente. Por favor, inicia sesión manualmente.');
       });
     } else {
       console.log('ℹ️ No se encontró token en la URL');
