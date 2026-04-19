@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escoger Ganadores - PremioClick</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .ganadores-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+        .back-button {
+            background: var(--white);
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        .back-button:hover {
+            background: var(--secondary-color);
+        }
+        .sorteo-selected-card {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+        .config-section {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        .select-premio {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--secondary-color);
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: 'Poppins', sans-serif;
+            background: var(--white);
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        .select-premio:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .cantidad-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .cantidad-btn {
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cantidad-btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: scale(1.1);
+        }
+        .cantidad-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .cantidad-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            min-width: 60px;
+            text-align: center;
+        }
+        .girar-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .girar-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .girar-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .spinner {
+            animation: spin 0.3s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .resultados-card {
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: var(--shadow-lg);
+        }
+        .resultados-title {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+        .ticket-ganador {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow);
+        }
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .ticket-numero {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+        .ticket-usuario {
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+        }
+        .ticket-email {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        .badge-premio {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+        .sorteo-list-item {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+        .sorteo-list-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .sorteo-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .sorteo-list-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+        .estado-badge {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .estado-activo {
+            background: var(--success);
+            color: var(--white);
+        }
+        .estado-finalizado {
+            background: var(--text-light);
+            color: var(--white);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <img src="logo.png" alt="PremioClick" class="logo-img">
+                <span>PremioClick</span>
+            </div>
+            <div class="header-actions">
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <span class="user-name" id="userNameDisplay"></span>
+                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+                <button class="login-btn" id="loginBtn" style="display: none;">
+                    <i class="fas fa-user"></i>
+                    <span>Iniciar Sesión</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="ganadores-container">
+        <button class="back-button" onclick="window.location.href='index.html'">
+            <i class="fas fa-arrow-left"></i> Volver
+        </button>
+
+        <h1 style="color: var(--primary-color); margin-bottom: 2rem;">
+            <i class="fas fa-trophy"></i> Escoger Ganadores
+        </h1>
+
+        <!-- Lista de Sorteos -->
+        <div id="sorteosList" style="display: none;">
+            <h2 style="margin-bottom: 1rem; color: var(--text-dark);">Selecciona un Sorteo</h2>
+            <div id="sorteosContainer"></div>
+        </div>
+
+        <!-- Configuración del Sorteo -->
+        <div id="sorteoConfig" style="display: none;">
+            <div class="sorteo-selected-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h2 id="sorteoTitulo" style="color: var(--primary-color); margin: 0;"></h2>
+                    <span id="sorteoEstadoBadge" class="estado-badge" style="padding: 4px 12px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;"></span>
+                </div>
+                <p id="sorteoDescripcion" style="color: var(--text-light);"></p>
+            </div>
+
+            <div class="config-section">
+                <div class="form-group">
+                    <label><i class="fas fa-gift"></i> Seleccionar Premio</label>
+                    <select id="productoSelect" class="select-premio">
+                        <option value="">Selecciona un premio</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-ticket"></i> Cantidad de Tickets Ganadores</label>
+                    <div class="cantidad-controls">
+                        <button class="cantidad-btn" id="decrementBtn" onclick="cambiarCantidad(-1)">-</button>
+                        <span class="cantidad-display" id="cantidadDisplay">1</span>
+                        <button class="cantidad-btn" id="incrementBtn" onclick="cambiarCantidad(1)">+</button>
+                    </div>
+                </div>
+
+                <button class="girar-btn" id="girarBtn" onclick="girar()" disabled>
+                    <i class="fas fa-trophy" id="trophyIcon"></i>
+                    <span id="girarText">Girar</span>
+                </button>
+
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--secondary-color);">
+                    <button class="finalizar-btn" id="finalizarBtn" onclick="finalizarSorteo()" style="width: 100%; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); color: var(--white); border: none; padding: 16px; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <i class="fas fa-check-circle" id="finalizarIcon"></i>
+                        <span id="finalizarText">Marcar Sorteo como Finalizado</span>
+                    </button>
+                    <p style="text-align: center; color: var(--text-light); font-size: 0.85rem; margin-top: 0.5rem;">
+                        Una vez finalizado, no se podrán escoger más ganadores
+                    </p>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="resultadosCard" class="resultados-card" style="display: none;">
+                <h2 class="resultados-title">🎉 Tickets Ganadores 🎉</h2>
+                <div id="resultadosContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="escoger-ganadores.js"></script>
+</body>
+</html>
+
