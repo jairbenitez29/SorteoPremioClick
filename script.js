@@ -1,3 +1,4 @@
+// v3 - reintentos automaticos y fixes login
 // Variables globales (declaradas aquí para que handleAutoLogin las use)
 let socket = null;
 let currentUser = null;
@@ -154,25 +155,30 @@ function setAuthToken(token) {
 }
 
 async function checkAuth() {
-    // Verificar si hay un proceso de auto-login en curso
+    // Solo esperar auto-login si el token en URL viene con autoLogin=true
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token');
-    if (urlToken) {
+    const autoLogin = urlParams.get('autoLogin') === 'true';
+    if (urlToken && autoLogin) {
         console.log('⏳ Auto-login en proceso, esperando...');
-        // Esperar un momento para que el auto-login termine
         setTimeout(() => {
-            // Verificar de nuevo después del auto-login
             const token = getAuthToken();
             if (token && currentUser) {
                 console.log('✅ Auto-login completado, usuario ya autenticado');
                 return;
             }
-            // Si no se completó, hacer verificación normal
             performCheckAuth();
         }, 1500);
         return;
     }
-    
+
+    // Limpiar token de URL si existe sin autoLogin (token inválido/expirado en URL)
+    if (urlToken && !autoLogin) {
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
     performCheckAuth();
 }
 
