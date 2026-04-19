@@ -240,9 +240,9 @@ async function login(email, password) {
             
             updateUIForUser(currentUser);
             closeLoginModal();
-            
+
             // Reconectar socket con autenticación
-            if (socket) {
+            if (socket && typeof socket.disconnect === 'function') {
                 socket.disconnect();
             }
             initSocket();
