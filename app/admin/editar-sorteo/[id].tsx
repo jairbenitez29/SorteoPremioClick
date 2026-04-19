@@ -1,5 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, Image, TouchableOpacity } from 'react-native';
+
+const MAX_REQUEST_BYTES = 3.8 * 1024 * 1024;
+function estimateDataUrlBytes(dataUrl: string): number {
+  if (!dataUrl) return 0;
+  const base64 = dataUrl.split(',')[1] || '';
+  return Math.floor((base64.length * 3) / 4);
+}
 import { Card, Text, Button, TextInput, ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -310,6 +317,14 @@ export default function EditarSorteo() {
     const fechaStr = format(fechaSorteo, 'yyyy-MM-dd');
     const horaStr = format(horaSorteo, 'HH:mm');
     const fechaCompleta = `${fechaStr}T${horaStr}:00`;
+
+    // Validar tamaño del payload antes de enviar (límite Vercel ~4MB)
+    const portadaBytes = imagenPortada ? estimateDataUrlBytes(imagenPortada) : 0;
+    const imagenesBytes = imagenes.reduce((acc, img) => acc + estimateDataUrlBytes(img), 0);
+    if (portadaBytes + imagenesBytes > MAX_REQUEST_BYTES) {
+      Alert.alert('Imágenes demasiado pesadas', 'Las imágenes superan el límite del servidor (~4MB). Reduce el tamaño o cantidad de imágenes.');
+      return;
+    }
 
     setSaving(true);
     try {

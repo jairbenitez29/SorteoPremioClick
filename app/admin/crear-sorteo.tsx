@@ -30,6 +30,7 @@ export default function CrearSorteo() {
   const [showPortadaConfirmModal, setShowPortadaConfirmModal] = useState(false);
   const [tempPortadaBase64, setTempPortadaBase64] = useState<string | null>(null);
   const [productos, setProductos] = useState([{ nombre: '', descripcion: '', posicion_premio: 1, imagenes: [] as string[] }]);
+  const [precioUnitario, setPrecioUnitario] = useState('');
   const [promociones, setPromociones] = useState<Array<{ cantidad_tickets: number; precio: number; descripcion?: string }>>([]);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoCantidad, setPromoCantidad] = useState('');
@@ -270,6 +271,7 @@ export default function CrearSorteo() {
         descripcion,
         fecha_sorteo: fechaCompleta,
         link: link || null,
+        precio_ticket: precioUnitario ? parseFloat(precioUnitario) : null,
         imagen_portada: imagenPortada || null,
         productos: productosData,
       };
@@ -387,6 +389,17 @@ export default function CrearSorteo() {
             numberOfLines={3}
             style={styles.input}
             textColor="#000"
+          />
+
+          <TextInput
+            label="Precio unitario del ticket (CLP)"
+            value={precioUnitario}
+            onChangeText={setPrecioUnitario}
+            mode="outlined"
+            placeholder="Ej: 3000"
+            style={styles.input}
+            textColor="#000"
+            keyboardType="numeric"
           />
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
