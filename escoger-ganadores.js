@@ -28,69 +28,45 @@ function setAuthToken(token) {
 
 async function checkAuth() {
     const token = getAuthToken();
-    if (!token) {
+    const userStr = localStorage.getItem('user');
+
+    if (!token || !userStr) {
         alert('Debes iniciar sesión como administrador para acceder a esta página');
         window.location.href = 'index.html';
         return;
     }
 
+    // Usar sesión guardada localmente primero
     try {
-        const response = await fetch(`${API_URL}/auth/verify`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
+        currentUser = JSON.parse(userStr);
+        authToken = token;
+
+        if (currentUser.rol !== 'admin') {
+            alert('Solo los administradores pueden acceder a esta página');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        updateUIForUser(currentUser);
+        loadSorteos();
+
+        // Verificar token en background (sin redirigir si falla)
+        fetch(`${API_URL}/auth/verify`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(response => {
+            if (response.status === 401) {
+                setAuthToken(null);
+                localStorage.removeItem('user');
+                alert('Sesión expirada, por favor inicia sesión de nuevo');
+                window.location.href = 'index.html';
             }
+        }).catch(() => {
+            // Error de red — mantener sesión
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            currentUser = data.user;
-            authToken = token;
-
-            if (currentUser.rol !== 'admin') {
-                alert('Solo los administradores pueden acceder a esta página');
-                window.location.href = 'index.html';
-                return;
-            }
-
-            updateUIForUser(currentUser);
-            loadSorteos();
-        } else if (response.status === 401) {
-            setAuthToken(null);
-            currentUser = null;
-            alert('Sesión expirada, por favor inicia sesión de nuevo');
-            window.location.href = 'index.html';
-        } else {
-            // Error del servidor — usar token guardado sin redirigir
-            const userStr = localStorage.getItem('user');
-            if (userStr) {
-                currentUser = JSON.parse(userStr);
-                authToken = token;
-                if (currentUser.rol !== 'admin') {
-                    window.location.href = 'index.html';
-                    return;
-                }
-                updateUIForUser(currentUser);
-                loadSorteos();
-            } else {
-                window.location.href = 'index.html';
-            }
-        }
     } catch (error) {
-        console.error('Error al verificar autenticación:', error);
-        // Error de red — usar sesión guardada localmente
-        const userStr = localStorage.getItem('user');
-        if (userStr && token) {
-            currentUser = JSON.parse(userStr);
-            authToken = token;
-            if (currentUser.rol !== 'admin') {
-                window.location.href = 'index.html';
-                return;
-            }
-            updateUIForUser(currentUser);
-            loadSorteos();
-        } else {
-            window.location.href = 'index.html';
-        }
+        console.error('Error al parsear usuario:', error);
+        window.location.href = 'index.html';
     }
 }
 
