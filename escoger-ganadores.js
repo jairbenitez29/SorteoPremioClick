@@ -45,25 +45,52 @@ async function checkAuth() {
             const data = await response.json();
             currentUser = data.user;
             authToken = token;
-            
+
             if (currentUser.rol !== 'admin') {
                 alert('Solo los administradores pueden acceder a esta página');
                 window.location.href = 'index.html';
                 return;
             }
-            
+
             updateUIForUser(currentUser);
             loadSorteos();
-        } else {
+        } else if (response.status === 401) {
             setAuthToken(null);
             currentUser = null;
+            alert('Sesión expirada, por favor inicia sesión de nuevo');
             window.location.href = 'index.html';
+        } else {
+            // Error del servidor — usar token guardado sin redirigir
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                currentUser = JSON.parse(userStr);
+                authToken = token;
+                if (currentUser.rol !== 'admin') {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                updateUIForUser(currentUser);
+                loadSorteos();
+            } else {
+                window.location.href = 'index.html';
+            }
         }
     } catch (error) {
         console.error('Error al verificar autenticación:', error);
-        setAuthToken(null);
-        currentUser = null;
-        window.location.href = 'index.html';
+        // Error de red — usar sesión guardada localmente
+        const userStr = localStorage.getItem('user');
+        if (userStr && token) {
+            currentUser = JSON.parse(userStr);
+            authToken = token;
+            if (currentUser.rol !== 'admin') {
+                window.location.href = 'index.html';
+                return;
+            }
+            updateUIForUser(currentUser);
+            loadSorteos();
+        } else {
+            window.location.href = 'index.html';
+        }
     }
 }
 
