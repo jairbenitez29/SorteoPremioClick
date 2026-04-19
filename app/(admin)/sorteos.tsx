@@ -179,12 +179,16 @@ export default function AdminSorteos() {
                 >
                   Editar
                 </Button>
-                <IconButton
-                  icon="delete"
-                  iconColor="#f44336"
-                  size={24}
+                <Button
+                  mode="contained"
+                  buttonColor="#f44336"
+                  textColor="#fff"
                   onPress={() => handleDelete(sorteo.id, sorteo.titulo)}
-                />
+                  style={styles.actionButton}
+                  icon="delete"
+                >
+                  {''}
+                </Button>
               </Card.Actions>
             </Card>
             );
