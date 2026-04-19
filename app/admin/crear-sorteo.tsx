@@ -29,6 +29,7 @@ export default function CrearSorteo() {
   const [imagenPortada, setImagenPortada] = useState<string | null>(null);
   const [showPortadaConfirmModal, setShowPortadaConfirmModal] = useState(false);
   const [tempPortadaBase64, setTempPortadaBase64] = useState<string | null>(null);
+  const [imagenesSorteo, setImagenesSorteo] = useState<string[]>([]);
   const [productos, setProductos] = useState([{ nombre: '', descripcion: '', posicion_premio: 1, imagenes: [] as string[] }]);
   const [precioUnitario, setPrecioUnitario] = useState('');
   const [promociones, setPromociones] = useState<Array<{ cantidad_tickets: number; precio: number; descripcion?: string }>>([]);
@@ -40,6 +41,7 @@ export default function CrearSorteo() {
 
   const estimateCurrentPayloadBytes = () => {
     let total = imagenPortada ? estimateDataUrlBytes(imagenPortada) : 0;
+    total += imagenesSorteo.reduce((acc, img) => acc + estimateDataUrlBytes(img), 0);
     for (const p of productos) {
       total += (p.imagenes || []).reduce((acc, img) => acc + estimateDataUrlBytes(img), 0);
     }
@@ -188,6 +190,42 @@ export default function CrearSorteo() {
     setImagenPortada(null);
   };
 
+  const pickImagenSorteo = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permisos necesarios', 'Necesitamos acceso a tu galería');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.1,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      let base64Image: string;
+      if (asset.base64) {
+        base64Image = `data:image/jpeg;base64,${asset.base64}`;
+      } else {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' as any });
+          base64Image = `data:image/jpeg;base64,${base64}`;
+        } catch {
+          Alert.alert('Error', 'No se pudo procesar la imagen');
+          return;
+        }
+      }
+      const imageBytes = estimateDataUrlBytes(base64Image);
+      if (!validateCanAddImage(imageBytes)) return;
+      setImagenesSorteo([...imagenesSorteo, base64Image]);
+    }
+  };
+
+  const removeImagenSorteo = (index: number) => {
+    setImagenesSorteo(imagenesSorteo.filter((_, i) => i !== index));
+  };
+
   const handleAddPromocion = () => {
     setPromoCantidad('');
     setPromoPrecio('');
@@ -273,6 +311,7 @@ export default function CrearSorteo() {
         link: link || null,
         precio_ticket: precioUnitario ? parseFloat(precioUnitario) : null,
         imagen_portada: imagenPortada || null,
+        imagenes: imagenesSorteo,
         productos: productosData,
       };
 
@@ -428,6 +467,33 @@ export default function CrearSorteo() {
               <Text style={styles.addPortadaLabel}>Agregar Imagen de Portada</Text>
             </TouchableOpacity>
           )}
+
+          <Text variant="titleMedium" style={styles.sectionTitle}>
+            Fotos del Premio
+          </Text>
+          <Text variant="bodySmall" style={styles.sectionSubtitle}>
+            Agrega fotos adicionales del premio (máximo 10)
+          </Text>
+          <View style={styles.imagesContainer}>
+            {imagenesSorteo.map((uri, index) => (
+              <View key={index} style={styles.imageWrapper}>
+                <Image source={{ uri }} style={styles.imagePreview} />
+                <IconButton
+                  icon="close"
+                  size={20}
+                  iconColor="#fff"
+                  style={styles.removeImageButton}
+                  onPress={() => removeImagenSorteo(index)}
+                />
+              </View>
+            ))}
+            {imagenesSorteo.length < 10 && (
+              <TouchableOpacity style={styles.addImageButton} onPress={pickImagenSorteo}>
+                <Text style={styles.addImageText}>+</Text>
+                <Text style={styles.addImageLabel}>Agregar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           <View style={styles.dateTimeContainer}>
             <View style={styles.dateTimeRow}>
