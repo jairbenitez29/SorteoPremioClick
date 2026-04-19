@@ -1,0 +1,40 @@
+name: Deploy to cPanel via FTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: premioclick.cl
+          username: premioclick@premioclick.cl
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            api/**
+            android/**
+            .github/**
+            *.md
+            *.txt
+            backend-*.js
+            server-vercel-patch.js
+            vercel.json
+            webpack.config.js
+            babel.config.js
+            tsconfig.json
+            package*.json
+            app.json
+            eas.json
