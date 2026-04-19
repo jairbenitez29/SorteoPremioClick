@@ -1,3 +1,9 @@
+// Variables globales (declaradas aquí para que handleAutoLogin las use)
+let socket = null;
+let currentUser = null;
+let authToken = null;
+let currentFilter = 'todos';
+
 // ============================================
 // AUTO-LOGIN: Integración con app móvil
 // ============================================
@@ -132,10 +138,6 @@ const isProduction = window.location.hostname.includes('vercel.app') ||
 const API_URL = isProduction 
     ? PRODUCTION_API_URL
     : window.location.origin.replace(/:\d+$/, ':3001') + '/api';  // En desarrollo, usar puerto 3001
-let currentFilter = 'todos';
-let currentUser = null;
-let socket = null;
-let authToken = null;
 
 // Autenticación
 function getAuthToken() {
