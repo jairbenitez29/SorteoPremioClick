@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Image, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Image, Alert, Linking } from 'react-native';
 import { Card, Text, Button, ActivityIndicator, FAB } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -204,7 +204,10 @@ export default function HomeScreen() {
                           ]
                         );
                       } else {
-                        router.push(`/comprar-ticket/${sorteo.id}`);
+                        const token = await AsyncStorage.getItem('token');
+                        let webUrl = `https://premioclick.cl/comprar-ticket.html?sorteoId=${sorteo.id}`;
+                        if (token) webUrl += `&token=${encodeURIComponent(token)}&autoLogin=true`;
+                        Linking.openURL(webUrl);
                       }
                     }}
                     style={styles.buyButton}

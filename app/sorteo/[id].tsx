@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Dimensions, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Dimensions, Alert, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card, Text, Button, ActivityIndicator, Chip, Divider, IconButton } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -339,7 +340,10 @@ export default function SorteoDetailScreen() {
                   ]
                 );
               } else {
-                router.push(`/comprar-ticket/${id}`);
+                const token = await AsyncStorage.getItem('token');
+                let webUrl = `https://premioclick.cl/comprar-ticket.html?sorteoId=${id}`;
+                if (token) webUrl += `&token=${encodeURIComponent(token)}&autoLogin=true`;
+                Linking.openURL(webUrl);
               }
             }}
             style={styles.buyButton}
