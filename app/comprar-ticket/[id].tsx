@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Linking } from 'react-native';
 import { Card, Text, Button, ActivityIndicator, Divider } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -73,7 +73,21 @@ export default function ComprarTicketScreen() {
   const [promocionSeleccionada, setPromocionSeleccionada] = useState<any>(null);
 
   useEffect(() => {
-    loadSorteo();
+    // Redirigir al sitio web con token para comprar
+    const redirigirAlSitioWeb = async () => {
+      try {
+        let webUrl = `https://premioclick.cl/comprar-ticket.html?sorteoId=${id}`;
+        const token = await AsyncStorage.getItem('token');
+        if (token && user) {
+          webUrl += `&token=${encodeURIComponent(token)}&autoLogin=true`;
+        }
+        await Linking.openURL(webUrl);
+      } catch (error) {
+        console.error('Error al abrir sitio web:', error);
+      }
+      router.back();
+    };
+    redirigirAlSitioWeb();
   }, [id]);
 
   const loadPrecioTicket = async () => {

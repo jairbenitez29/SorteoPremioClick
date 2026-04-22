@@ -185,9 +185,8 @@ export default function AdminSorteos() {
                   textColor="#fff"
                   onPress={() => handleDelete(sorteo.id, sorteo.titulo)}
                   style={styles.actionButton}
-                  icon="delete"
                 >
-                  {''}
+                  Eliminar
                 </Button>
               </Card.Actions>
             </Card>

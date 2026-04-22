@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, FlatList } from 'react-native';
-import { Card, Text, ActivityIndicator, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, FlatList, Linking } from 'react-native';
+import { Card, Text, ActivityIndicator, Chip, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MisTicketsScreen() {
   const { user } = useAuth();
@@ -38,6 +39,19 @@ export default function MisTicketsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadTickets();
+  };
+
+  const handleComprarTickets = async () => {
+    let webUrl = 'https://premioclick.cl';
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token && user) {
+        webUrl = `${webUrl}?token=${encodeURIComponent(token)}&autoLogin=true`;
+      }
+    } catch (error) {
+      console.error('Error al obtener token:', error);
+    }
+    Linking.openURL(webUrl);
   };
 
   if (loading) {
@@ -109,6 +123,16 @@ export default function MisTicketsScreen() {
               <Text variant="bodyMedium" style={styles.emptySubtext}>
                 Participa en nuestros sorteos para obtener tickets
               </Text>
+              <Button
+                mode="contained"
+                buttonColor="#7b2cbf"
+                textColor="#fff"
+                style={styles.buyButton}
+                icon="ticket"
+                onPress={handleComprarTickets}
+              >
+                Comprar Tickets
+              </Button>
             </Card.Content>
           </Card>
         }
@@ -259,6 +283,10 @@ const styles = StyleSheet.create({
   emptySubtext: {
     textAlign: 'center',
     color: '#999',
+  },
+  buyButton: {
+    marginTop: 16,
+    borderRadius: 12,
   },
 });
 
