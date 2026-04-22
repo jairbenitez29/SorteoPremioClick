@@ -319,7 +319,7 @@ export default function SorteoDetailScreen() {
         <View style={styles.actionsContainer}>
           <Button
             mode="contained"
-            onPress={() => {
+            onPress={async () => {
               if (!user) {
                 Alert.alert(
                   'Registro Requerido',

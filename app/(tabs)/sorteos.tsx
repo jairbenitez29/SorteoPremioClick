@@ -214,7 +214,7 @@ export default function SorteosScreen() {
                     mode="contained"
                     buttonColor="#7b2cbf"
                     textColor="#fff"
-                    onPress={(e) => {
+                    onPress={async (e) => {
                       e.stopPropagation();
                       if (!user) {
                         Alert.alert(
