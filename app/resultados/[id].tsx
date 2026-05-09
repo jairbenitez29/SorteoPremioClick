@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Card, Text, ActivityIndicator } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { api } from '../../services/api';
 
 export default function ResultadosScreen() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
   const [ganadores, setGanadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,9 +34,6 @@ export default function ResultadosScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Volver</Text>
-      </TouchableOpacity>
       <Card style={styles.headerCard}>
         <Card.Content>
           <Text variant="headlineSmall" style={styles.headerTitle}>
@@ -220,16 +216,6 @@ const styles = StyleSheet.create({
   emptySubtext: {
     textAlign: 'center',
     color: '#999',
-  },
-  backButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    marginBottom: 8,
-  },
-  backButtonText: {
-    color: '#7b2cbf',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
