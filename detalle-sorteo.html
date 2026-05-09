@@ -144,8 +144,11 @@
 
                     var titulo = esc(sorteo.titulo || 'Sorteo');
                     var descripcion = esc(sorteo.descripcion || '');
-                    var estado = sorteo.estado === 'activo' ? 'activo' : 'finalizado';
-                    var estadoTexto = sorteo.estado === 'activo' ? 'Activo' : 'Finalizado';
+                    var ahora = new Date();
+                    var fechaSorteo = new Date(sorteo.fecha_sorteo);
+                    var estadoReal = fechaSorteo < ahora ? 'finalizado' : (sorteo.estado === 'activo' ? 'activo' : 'finalizado');
+                    var estado = estadoReal;
+                    var estadoTexto = estadoReal === 'activo' ? 'Activo' : 'Finalizado';
 
                     var html = '<div class="detalle-card">';
                     if (sorteo.imagen_portada) {
@@ -182,7 +185,7 @@
                         });
                     }
 
-                    if (sorteo.estado === 'finalizado') {
+                    if (estadoReal === 'finalizado') {
                         html += '<h2 class="detalle-section-title"><i class="fas fa-trophy"></i> Ganadores</h2>';
                         html += '<section class="ganadores-section">';
                         if (sorteo.ganadores && sorteo.ganadores.length > 0) {
@@ -202,7 +205,7 @@
 
                     html += '<div class="detalle-actions">';
                     html += '<a href="index.html" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a>';
-                    if (sorteo.estado === 'activo') {
+                    if (estadoReal === 'activo') {
                         html += '<a href="comprar-ticket.html?id=' + esc(id) + '" class="btn-comprar"><i class="fas fa-shopping-cart"></i> Comprar Ticket</a>';
                     }
                     html += '</div>';
