@@ -50,9 +50,16 @@ function getSorteoId() {
     return urlParams.get('id');
 }
 
+function getEstadoReal(s) {
+    if (!s) return 'finalizado';
+    const fecha = new Date(s.fecha_sorteo);
+    const ahora = new Date();
+    return fecha < ahora ? 'finalizado' : (s.estado === 'activo' ? 'activo' : 'finalizado');
+}
+
 // Cargar ganadores desde tombola si el sorteo está finalizado y no vienen en el GET
 async function cargarGanadoresSiFalta(sorteoId) {
-    if (!sorteo || sorteo.estado !== 'finalizado' || !sorteoId) return;
+    if (!sorteo || getEstadoReal(sorteo) !== 'finalizado' || !sorteoId) return;
     if (sorteo.ganadores && sorteo.ganadores.length > 0) return;
     try {
         const response = await fetch(`${API_URL}/tombola/ganadores/${sorteoId}`);
@@ -161,9 +168,10 @@ function mostrarSorteo() {
     console.log('🔍 ========== FIN MOSTRANDO PORTADA ==========');
 
     document.getElementById('sorteoTitulo').textContent = sorteo.titulo;
+    const estadoReal = getEstadoReal(sorteo);
     const badge = document.getElementById('sorteoBadge');
-    badge.textContent = sorteo.estado;
-    badge.className = `sorteo-badge-detalle ${sorteo.estado === 'activo' ? 'badge-activo' : 'badge-finalizado'}`;
+    badge.textContent = estadoReal === 'activo' ? 'Activo' : 'Finalizado';
+    badge.className = `sorteo-badge-detalle ${estadoReal === 'activo' ? 'badge-activo' : 'badge-finalizado'}`;
     document.getElementById('sorteoDescripcion').textContent = sorteo.descripcion || 'Sin descripción';
 
     const fecha = new Date(sorteo.fecha_sorteo);
@@ -190,12 +198,12 @@ function mostrarSorteo() {
     if (imagenes.length > 0) mostrarGaleria();
     if (sorteo.productos && sorteo.productos.length > 0) mostrarProductos();
 
-    if (sorteo.estado === 'activo') {
+    if (estadoReal === 'activo') {
         document.getElementById('comprarSection').style.display = 'block';
     }
 
     // Siempre mostrar sección de ganadores cuando el sorteo está finalizado (con lista o mensaje "Aún no hay ganadores")
-    if (sorteo.estado === 'finalizado') {
+    if (estadoReal === 'finalizado') {
         mostrarGanadores();
     }
 }
@@ -364,7 +372,7 @@ function comprarTicket() {
         window.location.href = 'index.html';
         return;
     }
-    if (!sorteo || sorteo.estado !== 'activo') {
+    if (!sorteo || getEstadoReal(sorteo) !== 'activo') {
         alert('Este sorteo no está disponible para compra');
         return;
     }
