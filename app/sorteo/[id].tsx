@@ -128,12 +128,18 @@ export default function SorteoDetailScreen() {
   const canBuy = estadoReal === 'activo' && sorteo.estadisticas?.tickets_disponibles > 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      removeClippedSubviews={true}
+      decelerationRate="normal"
+      scrollEventThrottle={16}
+    >
       <Card style={styles.card}>
         <Card.Content>
           {sorteo.imagen_portada && (
             <Image
-              source={{ uri: sorteo.imagen_portada }}
+              source={{ uri: sorteo.imagen_portada, cache: 'force-cache' }}
               style={styles.portadaImage}
               resizeMode="cover"
             />
@@ -175,7 +181,7 @@ export default function SorteoDetailScreen() {
                       activeOpacity={0.8}
                     >
                       <Image
-                        source={{ uri: imagen }}
+                        source={{ uri: imagen, cache: 'force-cache' }}
                         style={styles.galleryImage}
                         resizeMode="cover"
                       />
@@ -249,7 +255,7 @@ export default function SorteoDetailScreen() {
                         {producto.imagenes.map((imagen: string, imgIndex: number) => (
                           <Image
                             key={imgIndex}
-                            source={{ uri: imagen }}
+                            source={{ uri: imagen, cache: 'force-cache' }}
                             style={styles.premioImage}
                             resizeMode="cover"
                           />
