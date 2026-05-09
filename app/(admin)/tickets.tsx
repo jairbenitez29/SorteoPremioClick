@@ -185,7 +185,7 @@ export default function AdminTickets() {
         </Text>
       </SafeLinearGradient>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} removeClippedSubviews={true} decelerationRate="normal" scrollEventThrottle={16}>
         <View style={styles.ticketsHeader}>
           <Text variant="titleLarge" style={styles.cardTitle}>
             Tickets Generados

@@ -77,6 +77,9 @@ export default function MisTicketsScreen() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          removeClippedSubviews={true}
+          decelerationRate="normal"
+          scrollEventThrottle={16}
         >
           <Card style={styles.emptyCard}>
             <Card.Content>

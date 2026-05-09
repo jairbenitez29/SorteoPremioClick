@@ -33,7 +33,7 @@ export default function ResultadosScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} removeClippedSubviews={true} decelerationRate="normal" scrollEventThrottle={16}>
       <Card style={styles.headerCard}>
         <Card.Content>
           <Text variant="headlineSmall" style={styles.headerTitle}>

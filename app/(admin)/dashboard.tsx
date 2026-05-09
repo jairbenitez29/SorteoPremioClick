@@ -60,6 +60,9 @@ export default function AdminDashboard() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        removeClippedSubviews={true}
+        decelerationRate="normal"
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
