@@ -21,7 +21,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#7b2cbf"
       },
       "package": "com.premioclick.app",
@@ -36,7 +36,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "scheme": "premioclick",
     "schemes": [
