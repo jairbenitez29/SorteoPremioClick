@@ -538,11 +538,13 @@ async function loadSorteos(filter = 'todos') {
         }
         console.log('🔍 ========== FIN SORTEOS RECIBIDOS ==========');
 
+        const ahora = new Date();
+        const getEstadoReal = (s) => new Date(s.fecha_sorteo) < ahora ? 'finalizado' : (s.estado === 'activo' ? 'activo' : 'finalizado');
         let filteredSorteos = sorteos;
         if (filter === 'activo') {
-            filteredSorteos = sorteos.filter(s => s.estado === 'activo');
+            filteredSorteos = sorteos.filter(s => getEstadoReal(s) === 'activo');
         } else if (filter === 'finalizado') {
-            filteredSorteos = sorteos.filter(s => s.estado === 'finalizado');
+            filteredSorteos = sorteos.filter(s => getEstadoReal(s) === 'finalizado');
         }
 
         if (filteredSorteos.length === 0) {
@@ -583,8 +585,10 @@ function createSorteoCard(sorteo) {
         minute: '2-digit'
     });
 
-    const badgeClass = sorteo.estado === 'activo' ? 'badge-activo' : 'badge-finalizado';
-    const badgeText = sorteo.estado === 'activo' ? 'Activo' : 'Finalizado';
+    const ahora = new Date();
+    const estadoReal = fecha < ahora ? 'finalizado' : (sorteo.estado === 'activo' ? 'activo' : 'finalizado');
+    const badgeClass = estadoReal === 'activo' ? 'badge-activo' : 'badge-finalizado';
+    const badgeText = estadoReal === 'activo' ? 'Activo' : 'Finalizado';
 
     // Formatear fecha más corta
     const fechaCorta = fecha.toLocaleDateString('es-ES', { 
