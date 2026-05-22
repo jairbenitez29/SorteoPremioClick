@@ -141,27 +141,8 @@ export default function RegisterScreen() {
               }
             />
 
-            {password.length > 0 && (
+            {password.length > 0 && !passwordCheck.valid && (
               <View style={styles.passwordFeedback}>
-                <View style={styles.strengthBar}>
-                  {[1, 2, 3, 4, 5].map(i => {
-                    const filled = (5 - passwordCheck.errors.length) >= i;
-                    return (
-                      <View
-                        key={i}
-                        style={[
-                          styles.strengthSegment,
-                          { backgroundColor: filled ? strengthInfo.color : '#e0e0e0' }
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-                {strengthInfo.label ? (
-                  <Text style={[styles.strengthLabel, { color: strengthInfo.color }]}>
-                    {strengthInfo.label}
-                  </Text>
-                ) : null}
                 {passwordCheck.errors.map((e, i) => (
                   <Text key={i} style={styles.requirementText}>• {e}</Text>
                 ))}
@@ -170,12 +151,7 @@ export default function RegisterScreen() {
 
             {password.length === 0 && (
               <View style={styles.passwordHints}>
-                <Text style={styles.hintsTitle}>La contraseña debe tener:</Text>
-                <Text style={styles.hintText}>• Mínimo 8 caracteres</Text>
-                <Text style={styles.hintText}>• Al menos una mayúscula (A-Z)</Text>
-                <Text style={styles.hintText}>• Al menos una minúscula (a-z)</Text>
-                <Text style={styles.hintText}>• Al menos un número (0-9)</Text>
-                <Text style={styles.hintText}>• Al menos un carácter especial (. ! @ # $ %)</Text>
+                <Text style={styles.hintText}>Mínimo 6 caracteres</Text>
               </View>
             )}
 

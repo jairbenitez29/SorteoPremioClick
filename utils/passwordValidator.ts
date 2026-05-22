@@ -6,16 +6,8 @@ export interface PasswordStrength {
 export function validatePassword(password: string): PasswordStrength {
   const errors: string[] = [];
 
-  if (password.length < 8)
-    errors.push('Mínimo 8 caracteres');
-  if (!/[A-Z]/.test(password))
-    errors.push('Al menos una mayúscula');
-  if (!/[a-z]/.test(password))
-    errors.push('Al menos una minúscula');
-  if (!/[0-9]/.test(password))
-    errors.push('Al menos un número');
-  if (!/[^A-Za-z0-9]/.test(password))
-    errors.push('Al menos un carácter especial (. ! @ # $ % etc.)');
+  if (password.length < 6)
+    errors.push('Mínimo 6 caracteres');
 
   return { valid: errors.length === 0, errors };
 }
