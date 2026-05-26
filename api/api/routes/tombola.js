@@ -330,7 +330,7 @@ router.get('/ganadores/:sorteoId', async (req, res) => {
     const { sorteoId } = req.params;
 
     const [ganadores] = await pool.execute(`
-      SELECT 
+      SELECT
         g.*,
         t.numero_ticket,
         p.nombre as producto_nombre,
@@ -347,7 +347,14 @@ router.get('/ganadores/:sorteoId', async (req, res) => {
       ORDER BY g.posicion_premio
     `, [sorteoId]);
 
-    res.json(ganadores);
+    // Enmascarar datos privados del ganador antes de devolver
+    const ganadoresPublicos = ganadores.map(g => ({
+      ...g,
+      ganador_email: g.ganador_email ? g.ganador_email.replace(/(.{2}).*(@.*)/, '$1***$2') : null,
+      ganador_telefono: g.ganador_telefono ? g.ganador_telefono.replace(/.(?=.{3})/g, '*') : null,
+    }));
+
+    res.json(ganadoresPublicos);
   } catch (error) {
     console.error('Error al obtener ganadores:', error);
     res.status(500).json({ error: 'Error al obtener ganadores' });

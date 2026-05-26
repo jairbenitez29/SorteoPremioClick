@@ -179,9 +179,15 @@ export default function MisTicketsScreen() {
                     Comprado: {format(new Date(ticket.fecha_compra), "dd 'de' MMMM 'de' yyyy")}
                   </Text>
                 )}
-                {ticket.sorteo_estado === 'finalizado' && (
-                  <Text variant="bodySmall" style={styles.sorteoDate}>
-                    Sorteo finalizado: {format(new Date(ticket.fecha_sorteo), "dd 'de' MMMM 'de' yyyy")}
+                {ticket.fecha_sorteo && (
+                  <Text variant="bodySmall" style={[
+                    styles.sorteoDate,
+                    new Date(ticket.fecha_sorteo) > new Date() && styles.sorteoDateActive
+                  ]}>
+                    {new Date(ticket.fecha_sorteo) > new Date()
+                      ? `Sorteo: ${format(new Date(ticket.fecha_sorteo), "dd 'de' MMMM 'de' yyyy 'a las' HH:mm")}`
+                      : `Sorteo realizado: ${format(new Date(ticket.fecha_sorteo), "dd 'de' MMMM 'de' yyyy")}`
+                    }
                   </Text>
                 )}
               </Card.Content>
@@ -274,6 +280,11 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  sorteoDateActive: {
+    color: '#7b2cbf',
+    fontStyle: 'normal',
+    fontWeight: '500',
   },
   emptyCard: {
     marginTop: 32,
