@@ -29,7 +29,6 @@ export default function EditarSorteo() {
   const [horaSorteo, setHoraSorteo] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [estado, setEstado] = useState('activo');
   const [productos, setProductos] = useState([{ nombre: '', descripcion: '', posicion_premio: 1 }]);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [imagenPortada, setImagenPortada] = useState<string | null>(null);
@@ -58,8 +57,6 @@ export default function EditarSorteo() {
       setTitulo(sorteo.titulo);
       setDescripcion(sorteo.descripcion || '');
       setLink(sorteo.link || '');
-      setEstado(sorteo.estado === 'finalizado' ? 'finalizado' : 'activo');
-      
       const fecha = new Date(sorteo.fecha_sorteo);
       setFechaSorteo(fecha);
       setHoraSorteo(fecha);
@@ -334,7 +331,6 @@ export default function EditarSorteo() {
         titulo,
         descripcion,
         fecha_sorteo: fechaCompleta,
-        estado,
         link: link || null,
         precio_ticket: precioTicketNum,
         imagen_portada: imagenPortada ?? null,
@@ -580,26 +576,6 @@ export default function EditarSorteo() {
                 <Text style={styles.addImageLabel}>Agregar</Text>
               </TouchableOpacity>
             )}
-          </View>
-
-          <Text variant="bodyMedium" style={{ marginBottom: 8, fontWeight: '600' }}>Estado</Text>
-          <View style={styles.estadoRow}>
-            <Button
-              mode={estado === 'activo' ? 'contained' : 'outlined'}
-              onPress={() => setEstado('activo')}
-              style={styles.estadoButton}
-              buttonColor={estado === 'activo' ? '#7b2cbf' : undefined}
-            >
-              Activo
-            </Button>
-            <Button
-              mode={estado === 'finalizado' ? 'contained' : 'outlined'}
-              onPress={() => setEstado('finalizado')}
-              style={styles.estadoButton}
-              buttonColor={estado === 'finalizado' ? '#4caf50' : undefined}
-            >
-              Finalizado
-            </Button>
           </View>
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
@@ -896,14 +872,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
     color: '#ff9800',
-  },
-  estadoRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  estadoButton: {
-    flex: 1,
   },
   addButton: {
     marginTop: 8,

@@ -38,9 +38,9 @@ router.get('/stats', async (req, res) => {
     `, []);
     const ingresos_totales = ingresos[0].total || 0;
 
-    // Sorteos activos
+    // Sorteos activos: los que tienen fecha futura (fuente de verdad = fecha, no campo estado)
     const [activos] = await pool.execute(
-      "SELECT COUNT(*) as total FROM sorteos WHERE estado = 'activo'",
+      "SELECT COUNT(*) as total FROM sorteos WHERE fecha_sorteo > NOW()",
       []
     );
     const sorteos_activos = activos[0].total;

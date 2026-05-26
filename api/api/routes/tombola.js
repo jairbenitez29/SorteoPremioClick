@@ -38,8 +38,9 @@ router.post('/realizar/:sorteoId', authenticateToken, async (req, res) => {
       });
     }
 
-    // Verificar que el sorteo no esté ya finalizado
-    if (sorteo.estado === 'finalizado') {
+    // Verificar que el sorteo no esté ya finalizado (por fecha y por ganadores existentes)
+    const yaTieneGanadores = await pool.execute('SELECT COUNT(*) as total FROM ganadores WHERE sorteo_id = ?', [sorteoId]);
+    if (yaTieneGanadores[0][0].total > 0) {
       return res.status(400).json({ error: 'Este sorteo ya fue realizado' });
     }
 
@@ -169,9 +170,9 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
 
     const sorteo = sorteos[0];
 
-    // Verificar que el sorteo no esté finalizado
-    if (sorteo.estado === 'finalizado') {
-      return res.status(400).json({ error: 'Este sorteo ya está finalizado. No se pueden escoger más ganadores.' });
+    // Verificar que la fecha del sorteo no sea futura (no se puede sortear antes de tiempo)
+    if (new Date(sorteo.fecha_sorteo) > new Date()) {
+      return res.status(400).json({ error: 'El sorteo aún no puede realizarse. La fecha programada no ha llegado.' });
     }
 
     // Verificar que el producto existe y pertenece al sorteo
