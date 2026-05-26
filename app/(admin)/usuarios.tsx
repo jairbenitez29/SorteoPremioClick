@@ -42,6 +42,29 @@ export default function AdminUsuarios() {
     }
   };
 
+  const handleDeleteUsuario = (userId: number, nombre: string) => {
+    Alert.alert(
+      'Eliminar Usuario',
+      `¿Estás seguro de que deseas eliminar a "${nombre}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/admin/usuarios/${userId}`);
+              Alert.alert('Éxito', 'Usuario eliminado correctamente');
+              loadUsuarios();
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar el usuario');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -132,6 +155,14 @@ export default function AdminUsuarios() {
                   }}
                   title="Quitar Admin"
                   disabled={usuario.rol === 'usuario'}
+                />
+                <Menu.Item
+                  onPress={() => {
+                    setMenuVisible((prev) => ({ ...prev, [usuario.id]: false }));
+                    handleDeleteUsuario(usuario.id, usuario.nombre);
+                  }}
+                  title="Eliminar Usuario"
+                  titleStyle={{ color: '#f44336' }}
                 />
               </Menu>
             </Card.Actions>
