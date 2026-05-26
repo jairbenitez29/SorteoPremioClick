@@ -9,7 +9,7 @@ const LOCAL_IP = 'localhost'; // IP local para desarrollo
 // Si defines EXPO_PUBLIC_API_URL en .env, la app usará esa URL (útil si tu API está en otra ruta)
 const PRODUCTION_API_URL =
   (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
-  'https://sorteo-premio-click.vercel.app/api'; // API en Vercel. Debe responder /auth/verify, /sorteos, etc.
+  'https://premioclick.cl/api'; // API en servidor propio (cPanel)
 
 // Variable para forzar uso de producción (útil cuando el backend está desplegado)
 // Cambia a false solo si quieres usar el backend local
