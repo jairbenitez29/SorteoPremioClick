@@ -136,6 +136,21 @@ router.post('/generar/:sorteoId', authenticateToken, async (req, res) => {
   }
 });
 
+// Contar tickets vendidos de un sorteo (para el modal de posponer)
+router.get('/sorteo/:sorteoId/vendidos-count', authenticateToken, async (req, res) => {
+  try {
+    const { sorteoId } = req.params;
+    const [result] = await pool.execute(
+      "SELECT COUNT(*) as total FROM tickets WHERE sorteo_id = ? AND estado = 'vendido'",
+      [sorteoId]
+    );
+    res.json({ total: result[0].total });
+  } catch (error) {
+    console.error('Error al contar tickets vendidos:', error);
+    res.status(500).json({ error: 'Error al contar tickets' });
+  }
+});
+
 // Obtener tickets de un sorteo
 router.get('/sorteo/:sorteoId', async (req, res) => {
   try {

@@ -440,7 +440,7 @@ router.post('/', authenticateToken, [
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, descripcion, fecha_sorteo, estado, productos, imagenes, link, imagen_portada, precio_ticket } = req.body;
+    const { titulo, descripcion, fecha_sorteo, estado, productos, imagenes, link, imagen_portada, precio_ticket, anularVendidos } = req.body;
 
     let query = 'SELECT * FROM sorteos WHERE id = ?';
     let params = [id];
@@ -484,6 +484,46 @@ router.put('/:id', authenticateToken, async (req, res) => {
       'UPDATE sorteos SET titulo = ?, descripcion = ?, fecha_sorteo = ?, estado = ?, imagenes = ?, imagen_portada = ?, link = ?, precio_ticket = ? WHERE id = ?',
       [titulo, descripcion, fecha_sorteo, estadoCalculado, nuevasImagenes, nuevaPortada, link || null, precioTicketValue, id]
     );
+
+    // Si la nueva fecha es futura y el admin decidió anular los tickets vendidos:
+    // marcarlos como 'anulado' y crear tickets nuevos con los mismos números (disponibles)
+    if (anularVendidos === true && estadoCalculado === 'activo') {
+      const [ticketsVendidos] = await pool.execute(
+        "SELECT * FROM tickets WHERE sorteo_id = ? AND estado = 'vendido'",
+        [id]
+      );
+
+      if (ticketsVendidos.length > 0) {
+        // Anular tickets vendidos
+        await pool.execute(
+          "UPDATE tickets SET estado = 'anulado' WHERE sorteo_id = ? AND estado = 'vendido'",
+          [id]
+        );
+
+        // Crear nuevos tickets disponibles con los mismos números
+        const { DB_TYPE } = require('../config/database');
+        const batchSize = 100;
+        for (let i = 0; i < ticketsVendidos.length; i += batchSize) {
+          const batch = ticketsVendidos.slice(i, i + batchSize);
+          if (DB_TYPE === 'postgres') {
+            const values = batch.map((_, idx) => {
+              const p = idx * 3 + 1;
+              return `($${p}, $${p + 1}, $${p + 2})`;
+            }).join(', ');
+            await pool.query(
+              `INSERT INTO tickets (sorteo_id, numero_ticket, precio) VALUES ${values}`,
+              batch.flatMap(t => [id, t.numero_ticket, t.precio])
+            );
+          } else {
+            const placeholders = batch.map(() => '(?, ?, ?)').join(', ');
+            await pool.execute(
+              `INSERT INTO tickets (sorteo_id, numero_ticket, precio) VALUES ${placeholders}`,
+              batch.flatMap(t => [id, t.numero_ticket, t.precio])
+            );
+          }
+        }
+      }
+    }
 
     if (productos && Array.isArray(productos)) {
       await pool.execute('DELETE FROM productos WHERE sorteo_id = ?', [id]);
