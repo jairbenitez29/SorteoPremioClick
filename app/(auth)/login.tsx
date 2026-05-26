@@ -18,7 +18,6 @@ export default function LoginScreen() {
   const { errorVisible, errorTitle, errorMessage, errorType, showError, hideError } = useErrorHandler();
 
   // Cargar credenciales guardadas al montar
-  const [usingSavedCredentials, setUsingSavedCredentials] = useState(false);
   useEffect(() => {
     (async () => {
       const saved = await getSavedCredentials();
@@ -26,7 +25,6 @@ export default function LoginScreen() {
         setEmail(saved.email);
         setPassword(saved.password);
         setRememberMe(true);
-        setUsingSavedCredentials(true);
       }
     })();
   }, []);
@@ -64,14 +62,7 @@ export default function LoginScreen() {
         else
           errorMsg = 'Error al iniciar sesión. Por favor, verifica tus credenciales e intenta de nuevo.';
       }
-      // Si el login falló usando credenciales guardadas, limpiar campos para que el usuario escriba manualmente
-      if (usingSavedCredentials) {
-        setPassword('');
-        setUsingSavedCredentials(false);
-        showError('Las credenciales guardadas ya no son válidas. Por favor, ingresa tu contraseña nuevamente.');
-      } else {
-        showError(errorMsg);
-      }
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
