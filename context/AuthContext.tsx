@@ -142,10 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const response = await api.get('/auth/verify', { signal: controller.signal });
           const userData = response.data.user;
-          console.log('Usuario verificado:', userData?.email);
           setUser(userData);
         } catch (verifyError: any) {
-          console.log('Error al verificar token:', verifyError.message);
           if (verifyError.response?.status === 401 || verifyError.response?.status === 403) {
             await AsyncStorage.removeItem('token');
             delete api.defaults.headers.common['Authorization'];
@@ -154,8 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearTimeout(timeoutId);
         }
       }
-    } catch (error: any) {
-      console.log('Auth check error:', error?.message);
+    } catch {
+      // silencioso — fallo de red al arrancar la app
     } finally {
       setLoading(false);
     }
@@ -284,8 +282,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const getSavedCredentials = async (): Promise<{ email: string; password: string } | null> => {
     try {
       const email = await AsyncStorage.getItem(SAVED_EMAIL_KEY);
-      const password = await SecureStore.getItemAsync(SAVED_PASSWORD_KEY);
+      if (!email) return null;
+      let password: string | null = null;
+      try {
+        password = await SecureStore.getItemAsync(SAVED_PASSWORD_KEY);
+      } catch {
+        // SecureStore puede fallar si el dispositivo cambió o reinstaló la app
+        await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
+        return null;
+      }
       if (email && password) return { email, password };
+      // Si hay email pero no contraseña, limpiar para no dejar estado inconsistente
+      if (email && !password) await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
     } catch {}
     return null;
   };

@@ -119,7 +119,6 @@ router.post('/login', [
     );
 
     const userData = userWithRole[0];
-    console.log('Usuario logueado (backend):', userData); // Debug
 
     res.json({
       message: 'Login exitoso',
@@ -154,8 +153,6 @@ router.get('/verify', async (req, res) => {
     }
 
     const userData = users[0];
-    console.log('Usuario verificado (backend verify):', userData); // Debug
-    
     res.json({ user: userData });
   } catch (error) {
     res.status(403).json({ error: 'Token inválido' });
