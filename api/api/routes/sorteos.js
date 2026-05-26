@@ -635,13 +635,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
       ? imagenesJson
       : sorteoActual.imagenes;
 
-    // Actualizar sorteo (incluye precio_ticket para precio unitario del ticket)
+    // El estado se determina automáticamente por la fecha: si es futura → activo, si pasó → finalizado
+    const estadoCalculado = new Date(fecha_sorteo) > new Date() ? 'activo' : 'finalizado';
+
     const precioTicketValue = (precio_ticket !== undefined && precio_ticket !== null && precio_ticket !== '')
       ? parseFloat(precio_ticket)
       : null;
     await pool.execute(
       'UPDATE sorteos SET titulo = ?, descripcion = ?, fecha_sorteo = ?, estado = ?, imagenes = ?, imagen_portada = ?, link = ?, precio_ticket = ? WHERE id = ?',
-      [titulo, descripcion, fecha_sorteo, estado, nuevasImagenes, nuevaPortada, link || null, precioTicketValue, id]
+      [titulo, descripcion, fecha_sorteo, estadoCalculado, nuevasImagenes, nuevaPortada, link || null, precioTicketValue, id]
     );
 
     if (productos && Array.isArray(productos)) {
