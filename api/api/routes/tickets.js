@@ -73,6 +73,18 @@ router.post('/generar/:sorteoId', authenticateToken, async (req, res) => {
 
     const sorteo = sorteos[0];
 
+    // Bloquear generación si ya hay tickets vendidos — el sorteo fue pospuesto
+    // Los tickets disponibles existentes siguen en venta, no se generan nuevos
+    const [vendidos] = await pool.execute(
+      "SELECT COUNT(*) as total FROM tickets WHERE sorteo_id = ? AND estado = 'vendido'",
+      [sorteoId]
+    );
+    if (vendidos[0].total > 0) {
+      return res.status(400).json({
+        error: `Este sorteo ya tiene ${vendidos[0].total} ticket(s) vendido(s). No se pueden generar tickets nuevos para mantener la integridad del sorteo. Los tickets disponibles existentes siguen en venta.`
+      });
+    }
+
     // Obtener las iniciales del sorteo
     const iniciales = getSorteoIniciales(sorteo.titulo);
     

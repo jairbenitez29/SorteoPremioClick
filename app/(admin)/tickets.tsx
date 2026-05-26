@@ -225,12 +225,20 @@ export default function AdminTickets() {
       setCantidad('100');
       setModalVisible(false);
       loadTickets();
-    } catch {
-      Alert.alert('Error', 'No se pudieron generar los tickets.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'No se pudieron generar los tickets.';
+      Alert.alert('No se puede generar', msg);
     } finally {
       setGenerating(false);
     }
   }, [selectedSorteo, cantidad, sorteos, loadTickets]);
+
+  const selectedSorteoTieneVendidos = useMemo(() => {
+    if (!selectedSorteo) return false;
+    const grupo = gruposSorteo.find(g => g.sorteoId === selectedSorteo);
+    if (!grupo) return false;
+    return grupo.tickets.some(t => t.estado === 'vendido');
+  }, [selectedSorteo, gruposSorteo]);
 
   const handleSearchChange = useCallback((sorteoId: number, text: string) => {
     setSearchQueries(prev => ({ ...prev, [sorteoId]: text }));
@@ -305,11 +313,18 @@ export default function AdminTickets() {
                   </Chip>
                 ))}
               </View>
-              <TextInput label="Cantidad de Tickets" value={cantidad} onChangeText={setCantidad} mode="outlined" keyboardType="numeric" style={styles.input} textColor="#000" />
+              {selectedSorteoTieneVendidos && (
+                <View style={styles.warningBox}>
+                  <Text variant="bodySmall" style={styles.warningText}>
+                    ⚠️ Este sorteo tiene tickets vendidos. No se pueden generar tickets nuevos para mantener la integridad del sorteo. Los tickets disponibles existentes siguen en venta.
+                  </Text>
+                </View>
+              )}
+              <TextInput label="Cantidad de Tickets" value={cantidad} onChangeText={setCantidad} mode="outlined" keyboardType="numeric" style={styles.input} textColor="#000" disabled={selectedSorteoTieneVendidos} />
               <Text variant="bodySmall" style={{ color: '#666', marginBottom: 12 }}>
                 El precio por ticket se toma del sorteo (configurable en Editar Sorteo).
               </Text>
-              <Button mode="contained" buttonColor="#7b2cbf" textColor="#fff" onPress={handleGenerarTickets} loading={generating} disabled={generating} style={styles.button} contentStyle={styles.buttonContent}>
+              <Button mode="contained" buttonColor="#7b2cbf" textColor="#fff" onPress={handleGenerarTickets} loading={generating} disabled={generating || selectedSorteoTieneVendidos} style={styles.button} contentStyle={styles.buttonContent}>
                 Generar Tickets
               </Button>
             </Card.Content>
@@ -334,6 +349,8 @@ const styles = StyleSheet.create({
   sorteosList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   sorteoChip: { marginBottom: 8 },
   input: { marginBottom: 16, backgroundColor: '#fff' },
+  warningBox: { backgroundColor: '#fff3e0', borderRadius: 8, padding: 12, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#ff9800' },
+  warningText: { color: '#e65100', lineHeight: 18 },
   searchInput: { marginBottom: 12, backgroundColor: '#fff' },
   noResults: { textAlign: 'center', color: '#666', padding: 16, fontStyle: 'italic' },
   button: { marginTop: 8 },
