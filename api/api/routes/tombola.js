@@ -146,14 +146,9 @@ router.post('/realizar/:sorteoId', authenticateToken, async (req, res) => {
 // Seleccionar ganadores aleatorios (nueva funcionalidad)
 router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
   try {
-    console.log('🔍 ========== INICIANDO SELECCIÓN DE GANADORES ==========');
-    console.log('🔍 Request body:', req.body);
-    console.log('🔍 User:', req.user);
-    
     const { sorteo_id, producto_id, cantidad } = req.body;
 
     if (!sorteo_id || !producto_id || !cantidad || cantidad < 1) {
-      console.error('❌ Datos inválidos:', { sorteo_id, producto_id, cantidad });
       return res.status(400).json({ error: 'Datos inválidos' });
     }
 
@@ -186,8 +181,6 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
 
     const producto = productos[0];
 
-    // Obtener SOLO los tickets VENDIDOS del sorteo que no sean ganadores
-    console.log('🔍 Buscando tickets vendidos para sorteo_id:', sorteo_id);
     const [ticketsVendidos] = await pool.execute(`
       SELECT t.*, u.nombre as usuario_nombre, u.email as usuario_email
       FROM tickets t
@@ -199,10 +192,7 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
         )
     `, [sorteo_id, sorteo_id]);
 
-    console.log('🔍 Tickets vendidos encontrados:', ticketsVendidos.length);
-
     if (ticketsVendidos.length === 0) {
-      console.error('❌ No hay tickets vendidos disponibles');
       return res.status(400).json({ error: 'No hay tickets vendidos disponibles para este sorteo' });
     }
 
@@ -233,49 +223,29 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
     const ticketsGanadores = seleccionarTicketsAleatorios(ticketsVendidos, cantidad);
     const ganadores = [];
 
-    // Guardar ganadores en la base de datos
-    console.log('🔍 Guardando ganadores en BD. Cantidad:', ticketsGanadores.length);
     for (let i = 0; i < ticketsGanadores.length; i++) {
       const ticket = ticketsGanadores[i];
-      console.log(`🔍 Procesando ganador ${i + 1}/${ticketsGanadores.length}:`, ticket.numero_ticket);
-      
       try {
-        // Verificar si ya existe un ganador para este ticket y producto (evitar duplicados)
         const [existentes] = await pool.execute(
           'SELECT id FROM ganadores WHERE sorteo_id = ? AND ticket_id = ? AND producto_id = ?',
           [sorteo_id, ticket.id, producto_id]
         );
-        
-        if (existentes.length > 0) {
-          console.log(`⚠️ El ticket ${ticket.numero_ticket} ya es ganador de este premio, saltando...`);
-          continue;
-        }
-        
-        // Insertar ganador
-        // Nota: Si hay restricción única (sorteo_id, posicion_premio), necesitamos eliminarla primero
-        // Por ahora, intentamos insertar y si falla por restricción única, continuamos
+        if (existentes.length > 0) continue;
+
         try {
           await pool.execute(
             'INSERT INTO ganadores (sorteo_id, ticket_id, producto_id, posicion_premio) VALUES (?, ?, ?, ?)',
             [sorteo_id, ticket.id, producto_id, producto.posicion_premio]
           );
-          console.log(`✅ Ganador ${i + 1} insertado en tabla ganadores`);
         } catch (insertError) {
-          // Si es error de restricción única, informar pero continuar
-          if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
-            console.log(`⚠️ Ya existe un ganador para este premio (posicion ${producto.posicion_premio}), pero continuamos con otros tickets...`);
-            // Continuar con el siguiente ticket
-            continue;
-          }
+          if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) continue;
           throw insertError;
         }
 
-        // Marcar ticket como ganador
         await pool.execute(
           'UPDATE tickets SET estado = ? WHERE id = ?',
           ['ganador', ticket.id]
         );
-        console.log(`✅ Ticket ${ticket.numero_ticket} marcado como ganador`);
 
         ganadores.push({
           id: ticket.id,
@@ -284,21 +254,11 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
           usuario_email: ticket.usuario_email,
         });
       } catch (dbError) {
-        console.error(`❌ Error al guardar ganador ${i + 1}:`, dbError);
-        console.error('❌ Error code:', dbError.code);
-        console.error('❌ Error message:', dbError.message);
-        console.error('❌ Stack:', dbError.stack);
-        // Si es error de restricción única, continuar con el siguiente
-        if (dbError.code === '23505' || dbError.message?.includes('duplicate key')) {
-          console.log(`⚠️ Error de restricción única, continuando con siguiente ticket...`);
-          continue;
-        }
+        if (dbError.code === '23505' || dbError.message?.includes('duplicate key')) continue;
         throw dbError;
       }
     }
 
-    console.log('✅ Todos los ganadores guardados correctamente');
-    console.log('🔍 ========== FIN SELECCIÓN DE GANADORES (ÉXITO) ==========');
     res.json({
       message: `${cantidad} ganador(es) seleccionado(s) correctamente`,
       ganadores,
@@ -309,18 +269,8 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('❌ ========== ERROR EN SELECCIÓN DE GANADORES ==========');
-    console.error('❌ Error completo:', error);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error code:', error.code);
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Stack completo:', error.stack);
-    console.error('❌ ========== FIN ERROR ==========');
-    res.status(500).json({ 
-      error: 'Error al seleccionar ganadores',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('Error al seleccionar ganadores:', error.message);
+    res.status(500).json({ error: 'Error al seleccionar ganadores' });
   }
 });
 

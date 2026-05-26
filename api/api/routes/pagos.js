@@ -21,37 +21,15 @@ const paypalConfig = {
   client_secret: process.env.PAYPAL_CLIENT_SECRET || ''
 };
 
-// Validar que las credenciales estén configuradas
-console.log('🔍 ========== CONFIGURACIÓN DE PAYPAL ==========');
-console.log('🔍 PAYPAL_MODE (raw):', process.env.PAYPAL_MODE);
-console.log('🔍 PAYPAL_MODE (procesado):', paypalMode);
-console.log('🔍 PAYPAL_CLIENT_ID (raw):', process.env.PAYPAL_CLIENT_ID ? process.env.PAYPAL_CLIENT_ID.substring(0, 30) + '...' : 'NO CONFIGURADO');
-console.log('🔍 PAYPAL_CLIENT_ID (length):', process.env.PAYPAL_CLIENT_ID ? process.env.PAYPAL_CLIENT_ID.length : 0);
-console.log('🔍 PAYPAL_CLIENT_SECRET (raw):', process.env.PAYPAL_CLIENT_SECRET ? 'CONFIGURADO (length: ' + process.env.PAYPAL_CLIENT_SECRET.length + ')' : 'NO CONFIGURADO');
-
 if (!paypalConfig.client_id || !paypalConfig.client_secret) {
-  console.error('⚠️ ADVERTENCIA: Las credenciales de PayPal no están configuradas en el archivo .env');
-  console.error('   PAYPAL_CLIENT_ID:', paypalConfig.client_id ? '✅ Configurado' : '❌ Faltante');
-  console.error('   PAYPAL_CLIENT_SECRET:', paypalConfig.client_secret ? '✅ Configurado' : '❌ Faltante');
-  console.error('   ⚠️ PayPal NO se configurará hasta que las credenciales estén disponibles');
+  console.error('PayPal: credenciales no configuradas (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET faltantes)');
 } else {
-  console.log('✅ PayPal configurado correctamente');
-  console.log('   Modo:', paypalConfig.mode);
-  console.log('   Client ID (primeros 30 chars):', paypalConfig.client_id.substring(0, 30) + '...');
-  console.log('   Client ID (longitud):', paypalConfig.client_id.length);
-  console.log('   Client Secret (longitud):', paypalConfig.client_secret.length);
-  console.log('   Client ID empieza con:', paypalConfig.client_id.substring(0, 2));
-  
-  // Solo configurar PayPal si las credenciales están disponibles
   try {
     paypal.configure(paypalConfig);
-    console.log('✅ PayPal SDK configurado exitosamente');
   } catch (error) {
-    console.error('❌ Error al configurar PayPal:', error.message);
-    console.error('   El servidor continuará sin PayPal hasta que se corrijan las credenciales');
+    console.error('Error al configurar PayPal:', error.message);
   }
 }
-console.log('🔍 ========== FIN CONFIGURACIÓN PAYPAL ==========');
 
 // Endpoint para probar credenciales PayPal (sin autenticación de usuario)
 // GET /api/pagos/paypal/test → { ok: true } o { ok: false, error, hint }
@@ -138,29 +116,15 @@ router.post('/paypal/create', authenticateToken, async (req, res) => {
     const montoCLP = parseFloat(monto);
     const montoUSD = convertirCLPaUSD(montoCLP);
 
-    console.log('📝 Solicitud de pago PayPal recibida:', {
-      ticketIds,
-      montoCLP: montoCLP,
-      montoUSD: montoUSD.toFixed(2),
-      usuarioId: req.user.id,
-      cantidadTickets: ticketIds?.length
-    });
-    if (montoCLP === 50 && montoUSD >= 1) {
-      console.warn('⚠️ 50 CLP se convirtió en', montoUSD, 'USD. Revisa TASA_CLP_USD y que tickets.precio en BD sea 50.');
-    }
-
     if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
-      console.error('❌ Error: No se proporcionaron tickets válidos');
       return res.status(400).json({ error: 'Se requieren tickets válidos' });
     }
 
     if (!montoCLP || montoCLP <= 0) {
-      console.error('❌ Error: Monto inválido:', montoCLP);
       return res.status(400).json({ error: 'El monto debe ser mayor a 0' });
     }
-    
+
     if (montoUSD <= 0) {
-      console.error('❌ Error: Monto en USD inválido después de conversión:', montoUSD);
       return res.status(400).json({ error: 'El monto convertido a USD debe ser mayor a 0' });
     }
 
@@ -171,13 +135,8 @@ router.post('/paypal/create', authenticateToken, async (req, res) => {
       ticketIds
     );
 
-    console.log('🎫 Tickets encontrados:', tickets.length, 'de', ticketIds.length, 'solicitados');
-
     if (tickets.length !== ticketIds.length) {
-      console.error('❌ Error: Algunos tickets no están disponibles');
-      console.error('   Tickets solicitados:', ticketIds);
-      console.error('   Tickets encontrados:', tickets.map(t => t.id));
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Algunos tickets no están disponibles o no existen',
         detalles: `Se solicitaron ${ticketIds.length} tickets pero solo se encontraron ${tickets.length} disponibles`
       });
@@ -186,20 +145,12 @@ router.post('/paypal/create', authenticateToken, async (req, res) => {
     // Verificar que los tickets pertenezcan al mismo sorteo
     const sorteoIds = [...new Set(tickets.map(t => t.sorteo_id))];
     if (sorteoIds.length > 1) {
-      console.error('❌ Error: Los tickets pertenecen a diferentes sorteos:', sorteoIds);
-      return res.status(400).json({ 
-        error: 'Los tickets deben pertenecer al mismo sorteo' 
-      });
+      return res.status(400).json({ error: 'Los tickets deben pertenecer al mismo sorteo' });
     }
 
-    console.log('✅ Validaciones pasadas. Creando pago en PayPal...');
-    
     // Verificar que las credenciales de PayPal estén configuradas ANTES de intentar crear el pago
     if (!paypalConfig.client_id || !paypalConfig.client_secret) {
-      console.error('❌ Error: Credenciales de PayPal no configuradas');
-      console.error('   PAYPAL_CLIENT_ID:', paypalConfig.client_id ? '✅' : '❌ FALTANTE');
-      console.error('   PAYPAL_CLIENT_SECRET:', paypalConfig.client_secret ? '✅' : '❌ FALTANTE');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Error de configuración: Las credenciales de PayPal no están configuradas',
         details: 'PAYPAL_CLIENT_ID o PAYPAL_CLIENT_SECRET faltantes en las variables de entorno',
         hint: 'Configura PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET y PAYPAL_MODE en cPanel Node.js App → Environment variables'
@@ -233,27 +184,9 @@ router.post('/paypal/create', authenticateToken, async (req, res) => {
       }]
     };
 
-    console.log('📝 Intentando crear pago PayPal con configuración:');
-    console.log('   Mode:', paypalConfig.mode);
-    console.log('   Client ID:', paypalConfig.client_id ? paypalConfig.client_id.substring(0, 20) + '...' : 'NO CONFIGURADO');
-    console.log('   Client Secret:', paypalConfig.client_secret ? '✅ Configurado' : '❌ NO CONFIGURADO');
-    console.log('   Monto CLP (original):', montoCLP.toFixed(0), 'CLP');
-    console.log('   Monto USD (para PayPal):', montoUSD.toFixed(2), 'USD');
-    console.log('   Tasa de cambio: 1000 CLP = 1 USD');
-    console.log('   Cantidad de tickets:', ticketIds.length);
-    
     paypal.payment.create(create_payment_json, async (error, payment) => {
       if (error) {
-        console.error('❌ Error PayPal al crear pago:');
-        console.error('   Mensaje:', error.message);
-        console.error('   Response Status:', error.response?.status || error.httpStatusCode);
-        console.error('   Response:', error.response);
-        console.error('   Error Name:', error.response?.name || error.name);
-        console.error('   Error Description:', error.response?.error_description || error.error_description);
-        console.error('   Detalles completos:', JSON.stringify(error, null, 2));
-        console.error('   PayPal Client ID configurado:', paypalConfig.client_id ? paypalConfig.client_id.substring(0, 20) + '...' : 'NO CONFIGURADO');
-        console.error('   PayPal Client Secret configurado:', paypalConfig.client_secret ? 'SÍ (oculto)' : 'NO CONFIGURADO');
-        console.error('   PayPal Mode:', paypalConfig.mode);
+        console.error('Error PayPal al crear pago:', error.message || error);
         
         // Verificar si es un error de autenticación
         if (error.response && (error.response.name === 'AUTHENTICATION_FAILURE' || error.response.status === 401 || error.httpStatusCode === 401)) {
