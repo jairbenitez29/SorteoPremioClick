@@ -1,12 +1,108 @@
-import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
-import { Card, Text, Button, ActivityIndicator, TextInput, Chip, Divider, IconButton, Modal, Portal } from 'react-native-paper';
+import { useEffect, useState, useCallback, useMemo, memo } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
+import { Card, Text, Button, ActivityIndicator, TextInput, Chip, Divider, IconButton, Modal, Portal, FAB } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../services/api';
 import { SafeLinearGradient } from '../../components/SafeLinearGradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FAB } from 'react-native-paper';
-import { useCallback } from 'react';
+
+interface Ticket {
+  id: number;
+  numero_ticket: string;
+  precio: string;
+  estado: string;
+  sorteo_id: number;
+  sorteo_titulo: string;
+}
+
+interface GrupoSorteo {
+  sorteoId: number;
+  sorteoNombre: string;
+  tickets: Ticket[];
+  total: number;
+  disponibles: number;
+}
+
+const TicketRow = memo(({ ticket, onDelete }: { ticket: Ticket; onDelete: () => void }) => (
+  <Card style={styles.ticketCard}>
+    <Card.Content style={styles.ticketContent}>
+      <View style={styles.ticketInfo}>
+        <View style={styles.ticketLeft}>
+          <Text variant="bodyMedium" style={styles.ticketNumber}>{ticket.numero_ticket}</Text>
+          <Text variant="bodySmall" style={styles.ticketPrice}>${parseFloat(ticket.precio).toFixed(0)}</Text>
+        </View>
+        <View style={styles.ticketRight}>
+          <Chip
+            style={[styles.ticketChip, ticket.estado === 'disponible' ? styles.ticketChipAvailable : styles.ticketChipSold]}
+            textStyle={styles.ticketChipText}
+          >
+            {ticket.estado === 'disponible' ? 'Disponible' : 'Vendido'}
+          </Chip>
+          {ticket.estado === 'disponible' && (
+            <IconButton icon="delete" iconColor="#f44336" size={20} onPress={onDelete} style={styles.deleteButton} />
+          )}
+        </View>
+      </View>
+    </Card.Content>
+  </Card>
+));
+
+const GrupoCard = memo(({ grupo, searchQuery, onSearchChange, onDeleteTicket, onDeleteSorteoTickets }: {
+  grupo: GrupoSorteo;
+  searchQuery: string;
+  onSearchChange: (text: string) => void;
+  onDeleteTicket: (id: number) => void;
+  onDeleteSorteoTickets: () => void;
+}) => {
+  const ticketsToShow = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (query) return grupo.tickets.filter(t => t.numero_ticket.toLowerCase().includes(query));
+    return grupo.tickets.slice(0, 1);
+  }, [searchQuery, grupo.tickets]);
+
+  return (
+    <Card style={styles.sorteoCard}>
+      <Card.Content style={styles.sorteoCardContent}>
+        <View style={styles.sorteoCardHeader}>
+          <Text variant="titleMedium" style={styles.sorteoCardTitle} numberOfLines={1}>{grupo.sorteoNombre}</Text>
+          {grupo.disponibles > 0 && (
+            <IconButton icon="delete-outline" iconColor="#f44336" size={22} onPress={onDeleteSorteoTickets} style={styles.deleteSorteoButton} />
+          )}
+        </View>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text variant="headlineSmall" style={styles.statNumber}>{grupo.total}</Text>
+            <Text variant="bodySmall" style={styles.statLabel}>Total</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text variant="headlineSmall" style={[styles.statNumber, styles.statAvailable]}>{grupo.disponibles}</Text>
+            <Text variant="bodySmall" style={styles.statLabel}>Disponibles</Text>
+          </View>
+        </View>
+        <Divider style={styles.divider} />
+        <TextInput
+          mode="outlined"
+          label="Buscar ticket por número"
+          value={searchQuery}
+          onChangeText={onSearchChange}
+          style={styles.searchInput}
+          textColor="#000"
+          placeholder="Ej: Gran Rifa-00"
+        />
+        {ticketsToShow.length === 0 ? (
+          <Text variant="bodyMedium" style={styles.noResults}>No se encontraron tickets con ese número</Text>
+        ) : (
+          ticketsToShow.map(ticket => (
+            <TicketRow
+              key={ticket.id}
+              ticket={ticket}
+              onDelete={() => onDeleteTicket(ticket.id)}
+            />
+          ))
+        )}
+      </Card.Content>
+    </Card>
+  );
+});
 
 export default function AdminTickets() {
   const router = useRouter();
@@ -15,34 +111,12 @@ export default function AdminTickets() {
   const [cantidad, setCantidad] = useState('100');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [tickets, setTickets] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<{ [key: number]: string }>({});
+  const [searchQueries, setSearchQueries] = useState<{ [key: number]: string }>({});
 
-  useEffect(() => {
-    loadSorteos();
-  }, []);
-
-  useEffect(() => {
-    loadTickets();
-  }, []);
-
-  // Recargar sorteos cuando la pantalla recibe foco (al volver de crear sorteo)
-  useFocusEffect(
-    useCallback(() => {
-      loadSorteos();
-    }, [])
-  );
-
-  // Recargar sorteos cuando se abre el modal
-  useEffect(() => {
-    if (modalVisible) {
-      loadSorteos();
-    }
-  }, [modalVisible]);
-
-  const loadSorteos = async () => {
+  const loadSorteos = useCallback(async () => {
     try {
       const response = await api.get('/sorteos');
       setSorteos(response.data);
@@ -55,12 +129,11 @@ export default function AdminTickets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSorteo]);
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     setLoadingTickets(true);
     try {
-      // Obtener todos los tickets de todos los sorteos
       const response = await api.get('/admin/tickets');
       setTickets(response.data);
     } catch {
@@ -69,102 +142,111 @@ export default function AdminTickets() {
     } finally {
       setLoadingTickets(false);
     }
-  };
+  }, []);
 
-  const handleDeleteTicket = async (ticketId: number) => {
-    Alert.alert(
-      'Eliminar Ticket',
-      '¿Estás seguro de que deseas eliminar este ticket?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/tickets/${ticketId}`);
-              Alert.alert('Éxito', 'Ticket eliminado correctamente');
-              loadTickets();
-            } catch (error: any) {
-              Alert.alert('Error', 'No se pudo eliminar el ticket.');
-            }
-          },
+  useEffect(() => { loadSorteos(); loadTickets(); }, []);
+  useFocusEffect(useCallback(() => { loadSorteos(); }, [loadSorteos]));
+  useEffect(() => { if (modalVisible) loadSorteos(); }, [modalVisible]);
+
+  // GroupBy memoizado — solo recalcula cuando cambian los tickets
+  const gruposSorteo = useMemo<GrupoSorteo[]>(() => {
+    const map: { [key: number]: Ticket[] } = {};
+    tickets.forEach(ticket => {
+      if (!map[ticket.sorteo_id]) map[ticket.sorteo_id] = [];
+      map[ticket.sorteo_id].push(ticket);
+    });
+    return Object.keys(map).map(id => {
+      const id_num = parseInt(id);
+      const list = map[id_num];
+      return {
+        sorteoId: id_num,
+        sorteoNombre: list[0].sorteo_titulo,
+        tickets: list,
+        total: list.length,
+        disponibles: list.filter(t => t.estado === 'disponible').length,
+      };
+    });
+  }, [tickets]);
+
+  const handleDeleteTicket = useCallback((ticketId: number) => {
+    Alert.alert('Eliminar Ticket', '¿Estás seguro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/tickets/${ticketId}`);
+            Alert.alert('Éxito', 'Ticket eliminado');
+            loadTickets();
+          } catch {
+            Alert.alert('Error', 'No se pudo eliminar el ticket.');
+          }
         },
-      ]
-    );
-  };
+      },
+    ]);
+  }, [loadTickets]);
 
-  const handleDeleteSorteoTickets = async (sorteoId: number, sorteoNombre: string, disponibles: number) => {
-    if (disponibles === 0) {
-      Alert.alert('Info', 'No hay tickets disponibles para eliminar en este sorteo');
-      return;
-    }
-
-    Alert.alert(
-      'Eliminar Tickets Disponibles',
-      `¿Estás seguro de que deseas eliminar todos los ${disponibles} tickets disponibles del sorteo "${sorteoNombre}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await api.delete(`/tickets/sorteo/${sorteoId}`);
-              Alert.alert('Éxito', `${response.data.eliminados || disponibles} tickets eliminados correctamente`);
-              loadTickets();
-            } catch (error: any) {
-              Alert.alert('Error', 'No se pudieron eliminar los tickets.');
-            }
-          },
+  const handleDeleteSorteoTickets = useCallback((sorteoId: number, nombre: string, disponibles: number) => {
+    if (disponibles === 0) { Alert.alert('Info', 'No hay tickets disponibles'); return; }
+    Alert.alert('Eliminar Tickets', `¿Eliminar ${disponibles} tickets disponibles de "${nombre}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const response = await api.delete(`/tickets/sorteo/${sorteoId}`);
+            Alert.alert('Éxito', `${response.data.eliminados || disponibles} tickets eliminados`);
+            loadTickets();
+          } catch {
+            Alert.alert('Error', 'No se pudieron eliminar.');
+          }
         },
-      ]
-    );
-  };
+      },
+    ]);
+  }, [loadTickets]);
 
-  const handleGenerarTickets = async () => {
-    if (!selectedSorteo) {
-      Alert.alert('Error', 'Selecciona un sorteo');
-      return;
-    }
-
-    if (!cantidad || parseInt(cantidad, 10) < 1) {
-      Alert.alert('Error', 'Indica una cantidad válida de tickets');
-      return;
-    }
-
+  const handleGenerarTickets = useCallback(async () => {
+    if (!selectedSorteo) { Alert.alert('Error', 'Selecciona un sorteo'); return; }
+    if (!cantidad || parseInt(cantidad, 10) < 1) { Alert.alert('Error', 'Indica una cantidad válida'); return; }
     const sorteo = sorteos.find((s: any) => s.id === selectedSorteo);
-    const precioGenerar =
-      sorteo?.precio_ticket != null && !Number.isNaN(parseFloat(String(sorteo.precio_ticket))) && parseFloat(String(sorteo.precio_ticket)) > 0
-        ? parseFloat(String(sorteo.precio_ticket))
-        : sorteo?.tickets?.[0]?.precio != null && !Number.isNaN(parseFloat(String(sorteo.tickets[0].precio)))
-        ? parseFloat(String(sorteo.tickets[0].precio))
-        : null;
-
-    if (precioGenerar == null || precioGenerar <= 0) {
-      Alert.alert(
-        'Precio no definido',
-        'Este sorteo no tiene precio unitario. Configúralo en Editar Sorteo (Precio unitario del ticket) y vuelve a generar.'
-      );
+    const precio = sorteo?.precio_ticket != null && parseFloat(String(sorteo.precio_ticket)) > 0
+      ? parseFloat(String(sorteo.precio_ticket))
+      : null;
+    if (!precio) {
+      Alert.alert('Precio no definido', 'Configura el precio en Editar Sorteo.');
       return;
     }
-
     setGenerating(true);
     try {
-      await api.post(`/tickets/generar/${selectedSorteo}`, {
-        cantidad: parseInt(cantidad, 10),
-        precio: precioGenerar,
-      });
-      Alert.alert('Éxito', `${cantidad} tickets generados correctamente`);
+      await api.post(`/tickets/generar/${selectedSorteo}`, { cantidad: parseInt(cantidad, 10), precio });
+      Alert.alert('Éxito', `${cantidad} tickets generados`);
       setCantidad('100');
       setModalVisible(false);
       loadTickets();
-    } catch (error: any) {
-      Alert.alert('Error', 'No se pudieron generar los tickets. Intenta de nuevo.');
+    } catch {
+      Alert.alert('Error', 'No se pudieron generar los tickets.');
     } finally {
       setGenerating(false);
     }
-  };
+  }, [selectedSorteo, cantidad, sorteos, loadTickets]);
+
+  const handleSearchChange = useCallback((sorteoId: number, text: string) => {
+    setSearchQueries(prev => ({ ...prev, [sorteoId]: text }));
+  }, []);
+
+  const renderGrupo = useCallback(({ item }: { item: GrupoSorteo }) => (
+    <GrupoCard
+      grupo={item}
+      searchQuery={searchQueries[item.sorteoId] || ''}
+      onSearchChange={(text) => handleSearchChange(item.sorteoId, text)}
+      onDeleteTicket={handleDeleteTicket}
+      onDeleteSorteoTickets={() => handleDeleteSorteoTickets(item.sorteoId, item.sorteoNombre, item.disponibles)}
+    />
+  ), [searchQueries, handleSearchChange, handleDeleteTicket, handleDeleteSorteoTickets]);
+
+  const keyExtractor = useCallback((item: GrupoSorteo) => String(item.sorteoId), []);
 
   if (loading) {
     return (
@@ -176,250 +258,58 @@ export default function AdminTickets() {
 
   return (
     <View style={styles.container}>
-      <SafeLinearGradient
-        colors={['#ffffff', '#f3e8ff', '#e9d5ff']}
-        style={styles.header}
-      >
-        <Text variant="headlineMedium" style={styles.headerText}>
-          Tickets
-        </Text>
+      <SafeLinearGradient colors={['#ffffff', '#f3e8ff', '#e9d5ff']} style={styles.header}>
+        <Text variant="headlineMedium" style={styles.headerText}>Tickets</Text>
       </SafeLinearGradient>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} removeClippedSubviews={true} decelerationRate="normal" scrollEventThrottle={16}>
-        <View style={styles.ticketsHeader}>
-          <Text variant="titleLarge" style={styles.cardTitle}>
-            Tickets Generados
-          </Text>
-          <View style={styles.headerActions}>
-            <Button
-              mode="text"
-              onPress={loadTickets}
-              icon="refresh"
-              textColor="#7b2cbf"
-              style={styles.headerButton}
-            >
-              Actualizar
-            </Button>
-          </View>
+      {loadingTickets ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="small" color="#7b2cbf" />
         </View>
-
-        {loadingTickets ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="small" color="#7b2cbf" />
-          </View>
-        ) : (
-          <>
-            {(() => {
-              // Agrupar tickets por sorteo
-              const ticketsPorSorteo: { [key: number]: any[] } = {};
-              tickets.forEach((ticket: any) => {
-                const sorteoId = ticket.sorteo_id;
-                if (!ticketsPorSorteo[sorteoId]) {
-                  ticketsPorSorteo[sorteoId] = [];
-                }
-                ticketsPorSorteo[sorteoId].push(ticket);
-              });
-
-              const sorteosConTickets = Object.keys(ticketsPorSorteo).map(id => ({
-                sorteoId: parseInt(id),
-                sorteoNombre: ticketsPorSorteo[parseInt(id)][0].sorteo_titulo,
-                tickets: ticketsPorSorteo[parseInt(id)],
-              }));
-
-              if (sorteosConTickets.length === 0) {
-                return (
-                  <Text variant="bodyMedium" style={styles.noTickets}>
-                    No hay tickets generados
-                  </Text>
-                );
-              }
-
-              return sorteosConTickets.map((grupo) => {
-                const totalTickets = grupo.tickets.length;
-                const disponibles = grupo.tickets.filter((t: any) => t.estado === 'disponible').length;
-
-                return (
-                  <Card key={grupo.sorteoId} style={styles.sorteoCard}>
-                    <Card.Content style={styles.sorteoCardContent}>
-                      <View style={styles.sorteoCardHeader}>
-                        <Text variant="titleMedium" style={styles.sorteoCardTitle}>
-                          {grupo.sorteoNombre}
-                        </Text>
-                        {disponibles > 0 && (
-                          <IconButton
-                            icon="delete-outline"
-                            iconColor="#f44336"
-                            size={22}
-                            onPress={() => handleDeleteSorteoTickets(grupo.sorteoId, grupo.sorteoNombre, disponibles)}
-                            style={styles.deleteSorteoButton}
-                          />
-                        )}
-                      </View>
-                      
-                      <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                          <Text variant="headlineSmall" style={styles.statNumber}>
-                            {totalTickets}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.statLabel}>
-                            Total
-                          </Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text variant="headlineSmall" style={[styles.statNumber, styles.statAvailable]}>
-                            {disponibles}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.statLabel}>
-                            Disponibles
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Divider style={styles.divider} />
-
-                      <TextInput
-                        mode="outlined"
-                        label="Buscar ticket por número"
-                        value={searchQuery[grupo.sorteoId] || ''}
-                        onChangeText={(text) => setSearchQuery({ ...searchQuery, [grupo.sorteoId]: text })}
-                        style={styles.searchInput}
-                        textColor="#000"
-                        placeholder="Ej: Gran Rifa-00"
-                      />
-
-                      <View>
-                        {(() => {
-                          const query = (searchQuery[grupo.sorteoId] || '').toLowerCase().trim();
-                          let ticketsToShow = grupo.tickets;
-                          
-                          if (query) {
-                            ticketsToShow = grupo.tickets.filter((t: any) => 
-                              t.numero_ticket.toLowerCase().includes(query)
-                            );
-                          } else {
-                            // Si no hay búsqueda, mostrar solo el primero
-                            ticketsToShow = grupo.tickets.slice(0, 1);
-                          }
-
-                          if (ticketsToShow.length === 0) {
-                            return (
-                              <Text variant="bodyMedium" style={styles.noResults}>
-                                No se encontraron tickets con ese número
-                              </Text>
-                            );
-                          }
-
-                          return ticketsToShow.map((ticket: any) => (
-                            <Card key={ticket.id} style={styles.ticketCard}>
-                              <Card.Content style={styles.ticketContent}>
-                                <View style={styles.ticketInfo}>
-                                  <View style={styles.ticketLeft}>
-                                    <Text variant="bodyMedium" style={styles.ticketNumber}>
-                                      {ticket.numero_ticket}
-                                    </Text>
-                                    <Text variant="bodySmall" style={styles.ticketPrice}>
-                                      ${parseFloat(ticket.precio).toFixed(0)}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.ticketRight}>
-                                    <Chip
-                                      style={[
-                                        styles.ticketChip,
-                                        ticket.estado === 'disponible' && styles.ticketChipAvailable,
-                                        ticket.estado === 'vendido' && styles.ticketChipSold,
-                                      ]}
-                                      textStyle={[
-                                        styles.ticketChipText,
-                                        ticket.estado === 'disponible' && styles.ticketChipTextAvailable,
-                                      ]}
-                                    >
-                                      {ticket.estado === 'disponible' ? 'Disponible' : 'Vendido'}
-                                    </Chip>
-                                    {ticket.estado === 'disponible' && (
-                                      <IconButton
-                                        icon="delete"
-                                        iconColor="#f44336"
-                                        size={20}
-                                        onPress={() => handleDeleteTicket(ticket.id)}
-                                        style={styles.deleteButton}
-                                      />
-                                    )}
-                                  </View>
-                                </View>
-                              </Card.Content>
-                            </Card>
-                          ));
-                        })()}
-                      </View>
-                    </Card.Content>
-                  </Card>
-                );
-              });
-            })()}
-          </>
-        )}
-
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={gruposSorteo}
+          renderItem={renderGrupo}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContent}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={4}
+          windowSize={8}
+          initialNumToRender={3}
+          updateCellsBatchingPeriod={100}
+          ListHeaderComponent={
+            <View style={styles.ticketsHeader}>
+              <Text variant="titleLarge" style={styles.cardTitle}>Tickets Generados</Text>
+              <Button mode="text" onPress={loadTickets} icon="refresh" textColor="#7b2cbf">Actualizar</Button>
+            </View>
+          }
+          ListEmptyComponent={
+            <Text variant="bodyMedium" style={styles.noTickets}>No hay tickets generados</Text>
+          }
+        />
+      )}
 
       <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
+        <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={styles.modalContainer}>
           <Card style={styles.modalCard}>
             <Card.Content>
               <View style={styles.modalHeader}>
-                <Text variant="titleLarge" style={styles.modalTitle}>
-                  Generar Tickets
-                </Text>
-                <IconButton
-                  icon="close"
-                  size={24}
-                  onPress={() => setModalVisible(false)}
-                />
+                <Text variant="titleLarge" style={styles.modalTitle}>Generar Tickets</Text>
+                <IconButton icon="close" size={24} onPress={() => setModalVisible(false)} />
               </View>
-
-              <Text variant="bodyMedium" style={styles.label}>
-                Seleccionar Sorteo
-              </Text>
+              <Text variant="bodyMedium" style={styles.label}>Seleccionar Sorteo</Text>
               <View style={styles.sorteosList}>
                 {sorteos.map((sorteo) => (
-                  <Chip
-                    key={sorteo.id}
-                    selected={selectedSorteo === sorteo.id}
-                    onPress={() => setSelectedSorteo(sorteo.id)}
-                    style={styles.sorteoChip}
-                  >
+                  <Chip key={sorteo.id} selected={selectedSorteo === sorteo.id} onPress={() => setSelectedSorteo(sorteo.id)} style={styles.sorteoChip}>
                     {sorteo.titulo}
                   </Chip>
                 ))}
               </View>
-
-              <TextInput
-                label="Cantidad de Tickets"
-                value={cantidad}
-                onChangeText={setCantidad}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.input}
-                textColor="#000"
-              />
-
+              <TextInput label="Cantidad de Tickets" value={cantidad} onChangeText={setCantidad} mode="outlined" keyboardType="numeric" style={styles.input} textColor="#000" />
               <Text variant="bodySmall" style={{ color: '#666', marginBottom: 12 }}>
-                El precio por ticket se usa el del sorteo (configurable en Editar Sorteo).
+                El precio por ticket se toma del sorteo (configurable en Editar Sorteo).
               </Text>
-
-              <Button
-                mode="contained"
-                buttonColor="#7b2cbf"
-                textColor="#fff"
-                onPress={handleGenerarTickets}
-                loading={generating}
-                disabled={generating}
-                style={styles.button}
-                contentStyle={styles.buttonContent}
-              >
+              <Button mode="contained" buttonColor="#7b2cbf" textColor="#fff" onPress={handleGenerarTickets} loading={generating} disabled={generating} style={styles.button} contentStyle={styles.buttonContent}>
                 Generar Tickets
               </Button>
             </Card.Content>
@@ -427,256 +317,54 @@ export default function AdminTickets() {
         </Modal>
       </Portal>
 
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        color="#fff"
-      />
+      <FAB icon="plus" style={styles.fab} onPress={() => setModalVisible(true)} color="#fff" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 32,
-  },
-  headerText: {
-    color: '#212121',
-    fontWeight: 'bold',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  card: {
-    elevation: 4,
-  },
-  cardTitle: {
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  label: {
-    marginBottom: 8,
-    color: '#666',
-  },
-  sorteosList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  sorteoChip: {
-    marginBottom: 8,
-  },
-  input: {
-    marginBottom: 16,
-    backgroundColor: '#fff',
-  },
-  searchInput: {
-    marginBottom: 12,
-    backgroundColor: '#fff',
-  },
-  noResults: {
-    textAlign: 'center',
-    color: '#666',
-    padding: 16,
-    fontStyle: 'italic',
-  },
-  button: {
-    marginTop: 8,
-  },
-  buttonContent: {
-    paddingVertical: 8,
-  },
-  ticketsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    flexWrap: 'wrap',
-    paddingHorizontal: 4,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  headerButton: {
-    marginLeft: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-    paddingVertical: 8,
-    backgroundColor: '#f3e8ff',
-    borderRadius: 10,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    color: '#7b2cbf',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  statAvailable: {
-    color: '#4caf50',
-  },
-  statSold: {
-    color: '#ff9800',
-  },
-  statLabel: {
-    color: '#666',
-    marginTop: 2,
-    fontSize: 11,
-  },
-  ticketsList: {
-    maxHeight: 400,
-    marginTop: 8,
-  },
-  viewMoreButton: {
-    marginTop: 6,
-    marginBottom: 2,
-  },
-  ticketCard: {
-    marginBottom: 6,
-    elevation: 2,
-  },
-  ticketContent: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  ticketInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ticketLeft: {
-    flex: 1,
-  },
-  sorteoName: {
-    color: '#7b2cbf',
-    fontWeight: 'bold',
-    fontSize: 11,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  ticketRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  ticketNumber: {
-    fontWeight: '600',
-    color: '#212121',
-    marginBottom: 2,
-    fontSize: 14,
-  },
-  ticketChip: {
-    height: 32,
-    minWidth: 100,
-  },
-  ticketChipAvailable: {
-    backgroundColor: '#4caf50',
-  },
-  ticketChipSold: {
-    backgroundColor: '#ff9800',
-  },
-  ticketChipText: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  ticketChipTextAvailable: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    letterSpacing: 0.8,
-  },
-  ticketPrice: {
-    color: '#7b2cbf',
-    fontWeight: '500',
-    fontSize: 12,
-  },
-  deleteButton: {
-    margin: 0,
-  },
-  moreTickets: {
-    textAlign: 'center',
-    color: '#666',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  noTickets: {
-    textAlign: 'center',
-    color: '#666',
-    padding: 20,
-  },
-  sorteoCard: {
-    marginBottom: 12,
-    elevation: 4,
-    borderRadius: 12,
-  },
-  sorteoCardContent: {
-    padding: 12,
-  },
-  sorteoCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sorteoCardTitle: {
-    fontWeight: 'bold',
-    color: '#7b2cbf',
-    fontSize: 18,
-    flex: 1,
-  },
-  deleteSorteoButton: {
-    margin: 0,
-  },
-  divider: {
-    marginVertical: 10,
-    backgroundColor: '#e0e0e0',
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#7b2cbf',
-  },
-  modalContainer: {
-    padding: 20,
-  },
-  modalCard: {
-    borderRadius: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontWeight: 'bold',
-    color: '#212121',
-  },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 100 },
+  header: { padding: 24, paddingTop: 60, paddingBottom: 32 },
+  headerText: { color: '#212121', fontWeight: 'bold' },
+  listContent: { padding: 16, paddingTop: 8, paddingBottom: 80 },
+  ticketsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  cardTitle: { fontWeight: 'bold' },
+  label: { marginBottom: 8, color: '#666' },
+  sorteosList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  sorteoChip: { marginBottom: 8 },
+  input: { marginBottom: 16, backgroundColor: '#fff' },
+  searchInput: { marginBottom: 12, backgroundColor: '#fff' },
+  noResults: { textAlign: 'center', color: '#666', padding: 16, fontStyle: 'italic' },
+  button: { marginTop: 8 },
+  buttonContent: { paddingVertical: 8 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10, paddingVertical: 8, backgroundColor: '#f3e8ff', borderRadius: 10 },
+  statItem: { alignItems: 'center' },
+  statNumber: { color: '#7b2cbf', fontWeight: 'bold', fontSize: 18 },
+  statAvailable: { color: '#4caf50' },
+  statLabel: { color: '#666', marginTop: 2, fontSize: 11 },
+  ticketCard: { marginBottom: 6, elevation: 1 },
+  ticketContent: { paddingVertical: 8, paddingHorizontal: 12 },
+  ticketInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  ticketLeft: { flex: 1 },
+  ticketRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ticketNumber: { fontWeight: '600', color: '#212121', marginBottom: 2, fontSize: 14 },
+  ticketPrice: { color: '#7b2cbf', fontWeight: '500', fontSize: 12 },
+  ticketChip: { height: 32, minWidth: 100 },
+  ticketChipAvailable: { backgroundColor: '#4caf50' },
+  ticketChipSold: { backgroundColor: '#ff9800' },
+  ticketChipText: { fontSize: 13, color: '#fff', fontWeight: 'bold' },
+  deleteButton: { margin: 0 },
+  noTickets: { textAlign: 'center', color: '#666', padding: 20 },
+  sorteoCard: { marginBottom: 12, elevation: 3, borderRadius: 12 },
+  sorteoCardContent: { padding: 12 },
+  sorteoCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  sorteoCardTitle: { fontWeight: 'bold', color: '#7b2cbf', fontSize: 16, flex: 1 },
+  deleteSorteoButton: { margin: 0 },
+  divider: { marginVertical: 10, backgroundColor: '#e0e0e0' },
+  fab: { position: 'absolute', margin: 16, right: 0, bottom: 0, backgroundColor: '#7b2cbf' },
+  modalContainer: { padding: 20 },
+  modalCard: { borderRadius: 16 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontWeight: 'bold', color: '#212121' },
 });
-
