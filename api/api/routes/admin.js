@@ -92,6 +92,18 @@ router.put('/usuarios/:id/rol', async (req, res) => {
   }
 });
 
+// Eliminar usuario
+router.delete('/usuarios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM usuarios WHERE id = ?', [id]);
+    res.json({ message: 'Usuario eliminado correctamente' });
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: 'Error al eliminar usuario' });
+  }
+});
+
 // Obtener todos los tickets con información del sorteo
 router.get('/tickets', async (req, res) => {
   try {

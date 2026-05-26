@@ -158,8 +158,8 @@ export default function AdminUsuarios() {
                 />
                 <Menu.Item
                   onPress={() => {
-                    setMenuVisible((prev) => ({ ...prev, [usuario.id]: false }));
-                    handleDeleteUsuario(usuario.id, usuario.nombre);
+                    setMenuVisible({});
+                    setTimeout(() => handleDeleteUsuario(usuario.id, usuario.nombre), 300);
                   }}
                   title="Eliminar Usuario"
                   titleStyle={{ color: '#f44336' }}
