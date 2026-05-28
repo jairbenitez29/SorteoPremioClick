@@ -43,11 +43,6 @@ const getApiUrl = () => {
 
 const API_URL = getApiUrl();
 
-// Log para debugging (siempre, para ayudar a diagnosticar problemas)
-console.log('🔗 URL de la API configurada:', API_URL);
-console.log('📱 Plataforma:', Platform.OS);
-console.log('🌐 IP local configurada:', LOCAL_IP);
-console.log('🔧 Modo desarrollo:', __DEV__);
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -65,7 +60,6 @@ export const testConnection = async () => {
     });
     return { success: true, data: response.data };
   } catch (error: any) {
-    console.error('❌ Error de conexión:', error.message);
     return { success: false, error: error.message };
   }
 };
@@ -78,16 +72,10 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-    } catch (error) {
-      console.error('Error al obtener token:', error);
-      // No crashear, continuar sin token
-    }
+    } catch {}
     return config;
   },
-  (error) => {
-    console.error('Error en interceptor de request:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Interceptor para reintentos automáticos y manejo de errores
@@ -106,29 +94,20 @@ api.interceptors.response.use(
 
     if ((isNetworkError || isTimeout || is5xx) && config._retryCount < MAX_RETRIES) {
       config._retryCount += 1;
-      const delay = config._retryCount * 1000; // 1s, 2s
-      console.log(`🔄 Reintentando (${config._retryCount}/${MAX_RETRIES}) en ${delay}ms...`);
+      const delay = config._retryCount * 1000;
       await new Promise(resolve => setTimeout(resolve, delay));
       return api(config);
     }
 
-    if (error.response?.status === 404) {
-      const url = error.config?.baseURL + (error.config?.url || '');
-      console.warn('⚠️ API 404 - Ruta no encontrada:', url);
-    }
 
     try {
       if (error.response?.status === 401) {
         try {
           await AsyncStorage.removeItem('token');
           delete api.defaults.headers.common['Authorization'];
-        } catch (storageError) {
-          console.error('Error al eliminar token:', storageError);
-        }
+        } catch {}
       }
-    } catch (handlerError) {
-      console.error('Error en interceptor de response:', handlerError);
-    }
+    } catch {}
     return Promise.reject(error);
   }
 );
