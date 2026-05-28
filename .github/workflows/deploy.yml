@@ -26,7 +26,6 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
-            api/**
             android/**
             .github/**
             *.md
@@ -40,3 +39,17 @@ jobs:
             package*.json
             app.json
             eas.json
+
+      - name: Deploy backend API via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: premioclick.cl
+          username: premioclick@premioclick.cl
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./api/api/
+          server-dir: /public_html/api/
+          dangerous-clean-slate: false
+          log-level: verbose
+          exclude: |
+            **/.git*
+            **/node_modules/**
